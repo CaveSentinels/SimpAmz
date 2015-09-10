@@ -1,0 +1,24 @@
+extends layout
+
+block content
+    h1 Questions
+    p Please answer the following questions:
+    table(border="1")
+        tr
+            th ID
+            th Question
+            th Input Answer
+        each q, i in questionlist
+            tr
+                td= q.Id
+                td= q.Text
+                td
+                    form(name="answer", action="/questions", method="post")
+                        input(type="text" name="answer")
+                        input(type="hidden" value=q.Id, name="qid")
+                        input(type="submit" value="Submit")
+    p #{result}
+
+    form(name="logout", action="/logout", method="post")
+        input(type="submit" value="Logout")
+    br

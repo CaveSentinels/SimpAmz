@@ -1,0 +1,27 @@
+extends layout
+
+block content
+    h1 Feedback History
+    p
+
+    table(border="1")
+        tr
+            th Date/Time
+            th User Name
+            th Question
+            th Expected Answer
+            th Actual Answer
+            th Result
+        each fb in feedback_history
+            tr
+                td= fb.DateTime
+                td= fb.UserName
+                td= fb.Question
+                td= fb.ExpectedAnswer
+                td= fb.ActualAnswer
+                td= fb.Result
+
+    br
+    form(name="logout", action="/logout", method="post")
+        input(type="submit" value="Logout")
+    br
