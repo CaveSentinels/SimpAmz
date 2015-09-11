@@ -10,8 +10,9 @@ CREATE TABLE `User` (
   `Name` varchar(100) NOT NULL,
   `Password` varchar(200) NOT NULL,
   `Role` varchar(10) NOT NULL DEFAULT 'Customer',
-  PRIMARY KEY (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `Name_UNIQUE` (`Name`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8;
 
 
 CREATE TABLE `UserContact` (
@@ -21,7 +22,7 @@ CREATE TABLE `UserContact` (
   `Addr` varchar(500) DEFAULT NULL,
   `City` varchar(100) DEFAULT NULL,
   `State` varchar(2) DEFAULT NULL,
-  `Zip` decimal(5,0) DEFAULT NULL COMMENT 'Zip code.',
+  `Zip` varchar(5) DEFAULT NULL COMMENT 'Zip code.',
   `Email` varchar(100) DEFAULT NULL,
   `UserID` int(11) NOT NULL,
   PRIMARY KEY (`ID`),
