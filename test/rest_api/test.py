@@ -7,58 +7,80 @@
 
 
 # =============================================================================
-# @type: directive
-# @brief: Imports.
 
 import urllib
 import urllib2
 import sys
-import datetime
 
 
 # =============================================================================
-# @type: constants
 
 http_request_local_base = "http://localhost:3000"
 
+# =============================================================================
+
+def PrintRes(res) :
+    print "=" * 20
+    print res
 
 # =============================================================================
-# @type: function
-# @brief: The main work flow.
-# @param: [in] args: The command line arguments.
-# @return: N/A
-# @note: arguments
-#   first: How many threads will be started to send HTTP requests.
-#   second: How many HTTP requests will be sent per thread.
+
+def RegisterUser(uname, pwd, fname="", lname="", addr="", city="", state="", zip="", email="") :
+    raw_data = {
+        'fName' : fname,
+        'lName' : lname,
+        'address' : addr,
+        'city' : city,
+        'state' : state,
+        'zip' : zip,
+        'email' : email,
+        'uName' : uname,
+        'pWord' : pwd
+    }
+    data = urllib.urlencode(raw_data)
+    req = urllib2.Request(http_request_local_base + "/registerUser", data)
+    res = urllib2.urlopen(req)
+
+    return res.read()
+
+# =============================================================================
+
+def Login(uname, pwd) :
+    raw_data = {
+        'username' : uname,
+        'password' : pwd
+    }
+    data = urllib.urlencode(raw_data)
+    req = urllib2.Request(http_request_local_base + "/login", data)
+    res = urllib2.urlopen(req)
+
+    return res.read()
+
+# =============================================================================
+
+def Logout() :
+    raw_data = {
+        # Empty
+    }
+    data = urllib.urlencode(raw_data)
+    req = urllib2.Request(http_request_local_base + "/logout", data)
+    res = urllib2.urlopen(req)
+
+    return res.read()
+
+# =============================================================================
+
+def TestScript1() :
+    PrintRes(RegisterUser(uname="yaobinw", pwd="password"))
+    PrintRes(Login("yaobinw", "password"))
+    PrintRes(Logout())
+
+# =============================================================================
 
 def Main( args ) :
-
-    # Test user registration.
-    data = {
-        'fName' : 'Yaobin',
-        'lName' : 'Wen',
-        'uName' : 'yaobinw',
-        # 'pWord' : 'password'
-    }
-    data = urllib.urlencode(data)
-
-    http_request_reg_user = urllib2.Request(http_request_local_base + "/registerUser", data)
-
-    print http_request_reg_user.get_method()
-
-    res = urllib2.urlopen( http_request_reg_user )
-
-    print res.read()
-
+    TestScript1()
 
 # =============================================================================
-# @type: script
-# @brief: The main entry of the script.
 
 if __name__ == "__main__" :
-
-    print datetime.datetime.now()
-
     Main( sys.argv )
-
-    print datetime.datetime.now()
