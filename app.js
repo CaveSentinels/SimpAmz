@@ -53,8 +53,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ============================================================================
 // Shared function
 
+function _NU(obj) {
+    return (obj == null || obj == undefined);
+}
+
 function emptize(str) {
-    return ((str == null || str == undefined) ? "" : str);
+    return (_NU(str) ? "" : str);
 }
 
 function ret_value(msg_base, msg_detail, err_code, more_info) {
@@ -278,7 +282,9 @@ app.post("/registerUser", function(req, res) {
                     } else {
                         var uid = result.insertId;
                         // Insert the contact information.
-                        // FIXME: What if none of the values is given?
+                        // It is possible that the user doesn't provide any
+                        // contact information. In this case, we just Insert
+                        // an empty row in the database.
                         sql_stmt = "INSERT INTO UserContact " +
                             "(FName, LName, Addr, City, State, Zip, Email, UserID) " +
                             "VALUES (" + _Q(fname) + ", " + _Q(lname) + ", " +
