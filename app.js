@@ -318,7 +318,7 @@ app.post("/registerUser", function(req, res) {
 // ============================================================================
 // Login
 
-app.post('/login', passport.authenticate('local', { failureRedirect : '/login' }),
+app.post('/login', passport.authenticate('local'),
     function(req, res) {
         if (req.user.role == "Admin") {
             res.json({
