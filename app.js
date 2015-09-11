@@ -360,44 +360,6 @@ app.post('/logout', function(req, res) {
 });
 
 // ============================================================================
-// Old routes
-
-/* GET home page. */
-app.get('/', function(req, res, next) {
-    res.render('index', {
-        title: 'SimpAmz',
-        full_title: 'SIMPlified AMaZon',
-        error: ''
-    });
-});
-
-/* GET questions. */
-app.get('/questions', function(req, res){
-    // Query the database for the questions.
-    if (req.isAuthenticated() && req.user.role == "Customer") {
-        list_questions(req, res, "");
-    } else {
-        res.redirect('/');
-    }
-});
-
-/* POST answers to questions. */
-app.post('/questions', function(req, res) {
-    // Record the question answers.
-    record_answer(req, res);
-});
-
-/* GET feedback history. */
-app.get('/feedback', function(req, res){
-    // Query the database for the feedback history.
-    if (req.isAuthenticated() && req.user.role == "Admin") {
-        list_feedback(req, res);
-    } else {
-        res.redirect('/');
-    }
-});
-
-// ============================================================================
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
