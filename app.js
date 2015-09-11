@@ -34,6 +34,25 @@ var zip_code_pattern = new RegExp("^\d{5}$", "g");
 var email_pattern = new RegExp("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", "g");
 
 // ============================================================================
+// Shared function
+
+function emptize(str) {
+    return ((str == null || str == undefined) ? "" : str);
+}
+
+function ret_value(msg_base, msg_detail, err_code, more_info) {
+    return {
+        message : emptize(msg_base) + emptize(msg_detail),
+        code : emptize(err_code),
+        more : emptize(more_info)
+    };
+}
+
+function _Q(str) {
+    return "\"" + emptize(str) + "\"";
+}
+
+// ============================================================================
 // User authentication
 
 var passport = require('passport');
@@ -41,29 +60,48 @@ var LocalStrategy = require('passport-local').Strategy;
 
 passport.use(new LocalStrategy(
     function(username, password, done) {
-        pool.getConnection(function(err, connection) {
+        var failure_msg_base = "Authentication failed: ";
+        var success_msg_base = "Authentication succeeded.";
+
+        pool.getConnection(function(err, conn) {
             if (err) {
-                console.log("Database connection error: " + err);
-                // connection.release();
-                return done(err);
+                return done(new Error(ret_value(
+                    failure_msg_base,
+                    "Database connection error: " + err,
+                    "E_POST_LOGIN_01", null
+                )));
             }
 
             var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" +
-                connection.escape(username) + " AND `Password`=" +
-                connection.escape(password) + "";
+                conn.escape(username) + " AND `Password`=" +
+                conn.escape(password) + "";
 
-            connection.query(sql_stmt, function(err, rows) {
-                connection.release();
+            conn.query(sql_stmt, function(err, rows) {
+                conn.release();
                 if (err) {
-                    return done(err);
+                    return done(new Error(ret_value(
+                        failure_msg_base,
+                        "Database QUERY error: " + err,
+                        "E_POST_LOGIN_02",
+                        sql_stmt
+                    )));
                 }
 
                 if (rows.length > 1) {
-                    return done(new Error('Authentication fails: ' + rows.length + ' user(s) match the username/password.'));
+                    return done(new Error(ret_value(
+                        failure_msg_base,
+                        "Database error: The provided user name matches multiple users.",
+                        "E_POST_LOGIN_03",
+                        _Q(rows.length) + " users."
+                    )));
                 }
 
                 if (rows.length == 0) {
-                    return done(null, false, { message: 'Incorrect username or password.'});
+                    return done(null, false, ret_value(
+                        failure_msg_base,
+                        "Incorrect user name or password.",
+                        "E_POST_LOGIN_04", null
+                    ));
                 }
 
                 if (rows.length == 1) {
@@ -76,8 +114,12 @@ passport.use(new LocalStrategy(
                 }
             });
 
-            connection.on('error', function(err) {
-                return done(err);
+            conn.on('error', function(err) {
+                return done(new Error(ret_value(
+                    failure_msg_base,
+                    "Database connection error: " + err,
+                    "E_POST_LOGIN_05", null
+                )));
             });
         });
     }
@@ -90,6 +132,8 @@ passport.serializeUser(function(user, done) {
 passport.deserializeUser(function(user, done) {
     done(null, user);
 });
+
+// ============================================================================
 
 var app = express();
 
@@ -252,25 +296,6 @@ function record_answer(req, res) {
 }
 
 // ============================================================================
-// Shared function
-
-function emptize(str) {
-    return ((str == null || str == undefined) ? "" : str);
-}
-
-function ret_value(msg_base, msg_detail, err_code, more_info) {
-    return {
-        message : emptize(msg_base) + emptize(msg_detail),
-        code : emptize(err_code),
-        more : emptize(more_info)
-    };
-}
-
-function _Q(str) {
-    return "\"" + emptize(str) + "\"";
-}
-
-// ============================================================================
 // Register new user as Customer.
 
 app.post("/registerUser", function(req, res) {
@@ -427,6 +452,50 @@ app.post("/registerUser", function(req, res) {
 });
 
 // ============================================================================
+// Login
+
+app.post('/login', passport.authenticate('local', { failureRedirect : '/login' }),
+    function(req, res) {
+        if (req.user.role == "Admin") {
+            res.json({
+                menu : ["Modify Products", "View Users", "View Products"]
+            });
+        } else if (req.user.role == "Customer") {
+            res.json({
+                menu : ["Update Contact Information", "View Products"]
+            });
+        } else {
+            res.json(ret_value(
+                "Incorrect user role",
+                req.user.role,
+                "E_POST_LOGIN_10",
+                null
+            ));
+        }
+    }
+);
+
+// ============================================================================
+// Logout
+
+app.post('/logout', function(req, res) {
+    if (req.isAuthenticated()) {
+        // If the user has logged in before, we then logout.
+        req.logout();
+        res.json(ret_value(
+            "You have been logged out.",
+            null, null, null
+        ));
+    } else {
+        // If no user has logged in before, we tell them.
+        res.json(ret_value(
+            "You are not currently logged in.",
+            null, null, null
+        ));
+    }
+});
+
+// ============================================================================
 // Old routes
 
 /* GET home page. */
@@ -436,25 +505,6 @@ app.get('/', function(req, res, next) {
         full_title: 'SIMPlified AMaZon',
         error: ''
     });
-});
-
-/* POST login information. */
-app.post('/', passport.authenticate('local', { failureRedirect : '/' }),
-    function(req, res) {
-        if (req.user.role == "Admin") {
-            res.redirect('/feedback');
-        } else if (req.user.role == "Customer") {
-            res.redirect('/questions');
-        } else {
-            res.redirect('/');
-        }
-    }
-);
-
-/* POST logout information. */
-app.post('/logout', function(req, res) {
-    req.logout();
-    res.redirect('/');
 });
 
 /* GET questions. */
