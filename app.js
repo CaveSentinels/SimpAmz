@@ -11,7 +11,7 @@ var mysql = require('mysql');
 
 var pool = mysql.createPool({
     connectionLimit : 100,
-    host : 'ec2-54-208-169-115.compute-1.amazonaws.com',
+    host : 'localhost',
     user : 'root',
     password : '',
     port : 3306,
@@ -31,7 +31,7 @@ var zip_code_pattern = new RegExp("^\d{5}$", "g");
 // The email address regex pattern is found here:
 // http://stackoverflow.com/a/1373724/630364
 // God knows how the IETF guys figured out such a complex pattern...
-var email_pattern = new RegExp("^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$", "g");
+var email_pattern = new RegExp("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", "g");
 
 // ============================================================================
 // User authentication
@@ -252,10 +252,30 @@ function record_answer(req, res) {
 }
 
 // ============================================================================
+// Shared function
+
+function emptize(str) {
+    return ((str == null || str == undefined) ? "" : str);
+}
+
+function ret_value(msg_base, msg_detail, err_code, more_info) {
+    return {
+        message : emptize(msg_base) + emptize(msg_detail),
+        code : emptize(err_code),
+        more : emptize(more_info)
+    };
+}
+
+function _Q(str) {
+    return "\"" + emptize(str) + "\"";
+}
+
+// ============================================================================
 // Register new user as Customer.
+
 app.post("/registerUser", function(req, res) {
     // Define the default return message.
-    var ret_value = { message : "Your account has been registered." };
+    var success_msg_base = "Your account has been registered.";
     var failure_msg_base = "Account registration failed: ";
 
     // Get the registration parameters.
@@ -273,8 +293,12 @@ app.post("/registerUser", function(req, res) {
     if (state) {
         if (valid_state_abbr.indexOf(state.toUpperCase()) == -1) {
             // Meaning that state's value is not a valid state abbreviation.
-            ret_value.message = failure_msg_base + "Invalid state abbreviation: " + state;
-            res.json(ret_value);    // Return
+            res.json(ret_value(
+                failure_msg_base,
+                "Invalid state abbreviation: " + state,
+                "E_POST_REG_USER_01", null
+            )); // Return
+            return;
         }
     }
 
@@ -282,8 +306,12 @@ app.post("/registerUser", function(req, res) {
     if (zip) {
         if (!zip_code_pattern.test(zip)) {
             // Meaning that zip's value is not a 5-digit zip code.
-            ret_value.message = failure_msg_base + "Invalid zip code: " + zip;
-            res.json(ret_value);    // Return
+            res.json(ret_value(
+                failure_msg_base,
+                "Invalid zip code: " + zip,
+                "E_POST_REG_USER_02", null
+            ));    // Return
+            return;
         }
     }
 
@@ -292,63 +320,103 @@ app.post("/registerUser", function(req, res) {
     if (email) {
         if (!email_pattern.test(email)) {
             // Meaning that email's value is not a valid email address.
-            ret_value.message = failure_msg_base + "Invalid email format: " + email;
-            res.json(ret_value);    // Return
+            res.json(ret_value(
+                failure_msg_base,
+                "Invalid email format: " + email,
+                "E_POST_REG_USER_03", null
+            ));    // Return
+            return;
         }
     }
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            conn.release();
-            ret_value.message = failure_msg_base + "Database connection error: " + err;
-            res.json(ret_value);    // Return
+            res.json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_REG_USER_04", null
+            ));    // Return
+            return;
         }
 
         // Validate parameter: user name must not be empty and must not exist.
         if (!uname || uname == "") {
             // Meaning that uname is empty, which is not allowed.
-            ret_value.message = failure_msg_base + "User name must not be empty.";
-            res.json(ret_value);    // Return
+            res.json(ret_value(
+                failure_msg_base,
+                "User name must not be empty.",
+                "E_POST_REG_USER_05", null
+            ));    // Return
+            return;
         } else if (!pwd || pwd == "") {
             // Meaning that pwd is empty, which is not allowed.
-            ret_value.message = failure_msg_base + "Password must not be empty.";
-            res.json(ret_value);    // Return
+            res.json(ret_value(
+                failure_msg_base,
+                "Password must not be empty.",
+                "E_POST_REG_USER_06", null
+            ));    // Return
+            return;
         } else {
-            var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" + uname;
+            var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" + _Q(uname);
             conn.query(sql_stmt, function(err, rows) {    // func_02
                 if (err) {
-                    ret_value.message = failure_msg_base + "Database connection error: " + err;
-                    res.json(ret_value);    // Return
+                    res.json(ret_value(
+                        failure_msg_base,
+                        "Database QUERY error: " + err,
+                        "E_POST_REG_USER_07",
+                        sql_stmt
+                    ));    // Return
+                    return;
                 } else {
                     if (rows.length > 0) {
-                        ret_value.message = failure_msg_base + "User name already exists: " + uname;
-                        res.json(ret_value);    // Return
+                        res.json(ret_value(
+                            failure_msg_base,
+                            "User name already exists: " + uname,
+                            "E_POST_REG_USER_08",
+                            null
+                        ));    // Return
+                        return;
                     }
                 }
 
                 // Now we know that the uname doesn't exist. We can create
                 // the user account.
-                sql_stmt = "INSERT INTO User (Name, Password, Role) VALUES (" + uname + ", " + password + ", 'Customer');";
+                sql_stmt = "INSERT INTO User (Name, Password, Role) VALUES (" +
+                    _Q(uname) + ", " + _Q(pwd) + ", 'Customer')";
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
-                        ret_value.message = failure_msg_base + "Database connection error: " + err;
-                        res.json(ret_value);    // Return
+                        res.json(ret_value(
+                            failure_msg_base,
+                            "Database INSERT INTO error: " + err,
+                            "E_POST_REG_USER_09",
+                            sql_stmt
+                        ));    // Return
+                        return;
                     } else {
                         var uid = result.insertId;
                         // Insert the contact information.
                         // FIXME: What if none of the values is given?
                         sql_stmt = "INSERT INTO UserContact " +
                             "(FName, LName, Addr, City, State, Zip, Email, UserID) " +
-                            "VALUES (" + fname + ", " + lname + ", " + addr + ", " +
-                            city + ", " + state + ", " + zip + ", " + email + ", " + uid + ")";
+                            "VALUES (" + _Q(fname) + ", " + _Q(lname) + ", " +
+                            _Q(addr) + ", " + _Q(city) + ", " + _Q(state) + ", " +
+                            _Q(zip) + ", " + _Q(email) + ", " + _Q(uid) + ")";
                         conn.query(sql_stmt, function(err, result) {    // func_04
                             if (err) {
-                                ret_value.message = failure_msg_base + "Database connection error: " + err;
-                                res.json(ret_value);    // Return
+                                res.json(ret_value(
+                                    failure_msg_base,
+                                    "Database INSERT INTO error: " + err,
+                                    "E_POST_REG_USER_10",
+                                    sql_stmt
+                                ));    // Return
+                                return;
                             } else {
                                 // OK. Finally we've done everything.
                                 // Return success.
-                                res.json(ret_value);    // Return
+                                res.json(ret_value(
+                                    success_msg_base, null, null, null
+                                ));    // Return
+                                return;
                             }
                         }); // func_04
                     }
@@ -356,7 +424,6 @@ app.post("/registerUser", function(req, res) {
             }); // func_02
         }
     }); // func_01
-
 });
 
 // ============================================================================
