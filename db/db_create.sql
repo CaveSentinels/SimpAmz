@@ -47,3 +47,13 @@ CREATE TABLE `Product` (
 INSERT INTO User (Name, Password, Role) VALUES ('hsmith', 'smith', 'Customer');
 INSERT INTO User (Name, Password, Role) VALUES ('tbucktoo', 'bucktoo', 'Customer');
 INSERT INTO User (Name, Password, Role) VALUES ('jadmin', 'admin', 'Admin');
+
+
+# ================================================================================
+# Reinitialize database.
+
+DELETE FROM UserContact WHERE ID >= 1;
+DELETE FROM User WHERE ID > 3;
+
+SELECT * FROM UserContact;
+SELECT * FROM User;
