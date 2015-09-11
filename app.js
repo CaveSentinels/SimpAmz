@@ -4,11 +4,9 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-
 var session = require('express-session');
 
 var mysql = require('mysql');
-
 var pool = mysql.createPool({
     connectionLimit : 100,
     host : 'localhost',
@@ -18,6 +16,11 @@ var pool = mysql.createPool({
     database : 'SimpAmz',
     debug : false
 });
+
+var app = express();
+
+var passport = require('passport');
+var LocalStrategy = require('passport-local').Strategy;
 
 var valid_state_abbr = [
     "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
@@ -32,6 +35,20 @@ var zip_code_pattern = new RegExp("^\d{5}$", "g");
 // http://stackoverflow.com/a/1373724/630364
 // God knows how the IETF guys figured out such a complex pattern...
 var email_pattern = new RegExp("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", "g");
+
+// ============================================================================
+
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'jade');
+
+// uncomment after placing your favicon in /public
+//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+app.use(logger('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================================================
 // Shared function
@@ -54,9 +71,6 @@ function _Q(str) {
 
 // ============================================================================
 // User authentication
-
-var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
 
 passport.use(new LocalStrategy(
     function(username, password, done) {
@@ -133,167 +147,11 @@ passport.deserializeUser(function(user, done) {
     done(null, user);
 });
 
-// ============================================================================
-
-var app = express();
-
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
-
-// uncomment after placing your favicon in /public
-//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-
 // Initialize Passport and restore authentication state, if any, from the
 // session.
 app.use(session({ secret: 'robin on rails' })); // Needed!
 app.use(passport.initialize());
 app.use(passport.session());
-
-
-// ============================================================================
-// Route handlers
-
-// List all the questions.
-function list_questions(req, res, result) {
-    pool.getConnection(function(err, connection) {
-        if (err) {
-            connection.release();
-            res.render('questions', {
-                "questionlist" : [],
-                "result" : "Database error!"
-            });
-        }
-
-        var sql_stmt = "SELECT * FROM Question";
-
-        connection.query(sql_stmt, function(err, rows) {
-            if (!err) {
-                var questions = [];
-                for (i = 0; i < rows.length; i++) {
-                    questions.push({
-                        "Id" : rows[i].ID,
-                        "Text" : rows[i].Text
-                    });
-                }
-                res.render('questions', {
-                    "questionlist" : questions,
-                    "result" : result
-                });
-            } else {
-                res.render('questions', {
-                    "questionlist" : [],
-                    "result" : "Database error!"
-                });
-            }
-        });
-
-        connection.on('error', function(err) {
-            res.render('questions', {
-                "questionlist" : [],
-                "result" : "Database error!"
-            });
-        });
-    });
-}
-
-function list_feedback(req, res) {
-    pool.getConnection(function(err, connection) {
-        if (err) {
-            connection.release();
-            console.log("Database error: " + err);
-            res.render('feedback', {
-                "feedback_history" : []
-            });
-        }
-
-        var sql_stmt =
-            "SELECT Feedback.Time, User.Name, Question.Text, Question.Expected, Feedback.ActualAns, Feedback.Result " +
-            "FROM Feedback " +
-            "INNER JOIN User ON Feedback.UserID = User.ID " +
-            "INNER JOIN Question ON Question.ID = Feedback.QID " +
-            "ORDER BY Feedback.Time";
-
-        connection.query(sql_stmt, function(err, rows) {
-            if (!err) {
-                var feedback_history = [];
-                for (i = 0; i < rows.length; i++) {
-                    feedback_history.push({
-                        "DateTime" : rows[i].Time,
-                        "UserName" : rows[i].Name,
-                        "Question" : rows[i].Text,
-                        "ExpectedAnswer" : rows[i].Expected,
-                        "ActualAnswer" : rows[i].ActualAns,
-                        "Result" : rows[i].Result
-                    });
-                }
-                res.render('feedback', {
-                    "feedback_history" : feedback_history
-                });
-            } else {
-                console.log("Database error: " + err);
-                res.render('feedback', {
-                    "feedback_history" : []
-                });
-            }
-        });
-
-        connection.on('error', function(err) {
-            console.log("Database error: " + err);
-            res.render('feedback', {
-                "feedback_history" : []
-            });
-        });
-    });
-}
-
-function record_answer(req, res) {
-    var uid = req.user.id;
-    var qid = req.body.qid;
-    var answer = req.body.answer;
-    var result = "<Unknown>";
-
-    pool.getConnection(function(err, connection) {
-        if (err) {
-            connection.release();
-            res.render('questions');
-        }
-
-        var sql_stmt = "SELECT * FROM `Question` WHERE `ID`=" + qid;
-
-        connection.query(sql_stmt, function(err, rows) {
-            if (!err) {
-                var expected_ans = rows[0].Expected;
-                result = (answer == expected_ans ? "Correct" : "Wrong");
-
-                sql_stmt = "INSERT INTO `Feedback` (`Time`, `UserID`, `QID`, " +
-                    "`ActualAns`, `Result`) VALUES (NOW(), " +
-                    uid + ", " + qid + ", " + answer + ", '" + result + "')";
-                console.log("SQL STMT: " + sql_stmt);
-
-                connection.query(sql_stmt, function(err, affects) {
-                    if (!err) {
-                        console.log("Answer recorded: " + affects);
-                    } else {
-                        console.log("Answer recording fails: " + err);
-                    }
-                    list_questions(req, res, result);
-                });
-            } else {
-                console.log("Database error: Cannot find the question's expected answer.");
-            }
-        });
-
-        connection.on('error', function(err) {
-            res.redirect('questions');
-        });
-    });
-}
 
 // ============================================================================
 // Register new user as Customer.
