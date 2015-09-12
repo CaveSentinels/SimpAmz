@@ -19,8 +19,9 @@ http_request_local_base = "http://localhost:3000"
 
 # =============================================================================
 
-def PrintRes(res) :
+def PrintRes(action, res) :
     print "=" * 20
+    print action
     print res
 
 # =============================================================================
@@ -39,6 +40,18 @@ def RegisterUser(uname, pwd, fname="", lname="", addr="", city="", state="", zip
     }
     data = urllib.urlencode(raw_data)
     req = urllib2.Request(http_request_local_base + "/registerUser", data)
+    res = urllib2.urlopen(req)
+
+    return res.read()
+
+# =============================================================================
+
+def UnregisterUser() :
+    raw_data = {
+        # Empty
+    }
+    data = urllib.urlencode(raw_data)
+    req = urllib2.Request(http_request_local_base + "/unregisterUser", data)
     res = urllib2.urlopen(req)
 
     return res.read()
@@ -71,9 +84,10 @@ def Logout() :
 # =============================================================================
 
 def TestScript1() :
-    PrintRes(RegisterUser(uname="yaobinw", pwd="password"))
-    PrintRes(Login("yaobinw", "password"))
-    PrintRes(Logout())
+    PrintRes(RegisterUser.__name__, RegisterUser(uname="yaobinw", pwd="password"))
+    PrintRes(Login.__name__, Login("yaobinw", "password"))
+    # PrintRes(UnregisterUser.__name__, UnregisterUser())
+    PrintRes(Logout.__name__, Logout())
 
 # =============================================================================
 

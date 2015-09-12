@@ -22,6 +22,8 @@ var app = express();
 var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
 
+// ============================================================================
+
 var valid_state_abbr = [
     "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
     "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
@@ -35,6 +37,12 @@ var zip_code_pattern = new RegExp("^\d{5}$", "g");
 // http://stackoverflow.com/a/1373724/630364
 // God knows how the IETF guys figured out such a complex pattern...
 var email_pattern = new RegExp("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", "g");
+
+// ============================================================================
+
+var ERR_MSG_AUTH_FAILURE = "Authentication failed: ";
+var ERR_MSG_DB_CONN_ERR = "Database connection error: ";
+var ERR_MSG_DB_DELETE_ERR = "Database DELETE error: ";
 
 // ============================================================================
 
@@ -302,6 +310,67 @@ app.post("/registerUser", function(req, res) {
                         }
                     }); // func_04
                 }
+            }); // func_03
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
+// Unregister an existing user.
+
+app.post('/unregisterUser', function(req, res) {
+    var success_msg_base = "Your account has been unregistered.";
+    var failure_msg_base = "Account unregistration failed: ";
+
+    // The user must be authenticated in order to unregister the account.
+    if (!req.isAuthenticated()) {
+        return res.json(ret_value(
+            failure_msg_base,
+            ERR_MSG_AUTH_FAILURE + "User must log in before unregistering the account.",
+            "E_POST_UNREG_USER_01", null
+        ));
+    }
+
+    var uid = req.user.id;
+
+    // Go and delete the account from the database.
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.json(ret_value(
+                failure_msg_base,
+                ERR_MSG_DB_CONN_ERR + err,
+                "E_POST_UNREG_USER_02", null
+            ));
+        }
+
+        var sql_stmt = "DELETE FROM `User` WHERE `ID` = " + conn.escape(uid);
+
+        conn.query(sql_stmt, function(err, result) {    // func_02
+            if (err) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_DB_DELETE_ERR + err,
+                    "E_POST_UNREG_USER_03", null
+                ));
+            }
+
+            // User info has been deleted. Now delete the contact info.
+            sql_stmt = "DELETE FROM `UserContact` WHERE `UserID` = " + conn.escape(uid);
+
+            conn.query(sql_stmt, function(err, result) {    // func_03
+                if (err) {
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        ERR_MSG_DB_DELETE_ERR + err,
+                        "E_POST_UNREG_USER_04", null
+                    ));
+                }
+
+                // Deletion succeeded.
+                return res.json(ret_value(
+                    success_msg_base,
+                    null, null, null
+                ));
             }); // func_03
         }); // func_02
     }); // func_01
