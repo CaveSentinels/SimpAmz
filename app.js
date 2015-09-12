@@ -408,11 +408,11 @@ app.post('/updateInfo', function(req, res) {
         lname : req.body.lName,
         addr : req.body.address,
         city : req.body.city,
-        state = req.body.state,
-        zip = req.body.zip,
-        email = req.body.email,
-        uname = req.body.uName,
-        pwd = req.body.pWord
+        state : req.body.state,
+        zip : req.body.zip,
+        email : req.body.email,
+        uname : req.body.uName,
+        pwd : req.body.pWord
     };
 
     // Validate parameter: state
