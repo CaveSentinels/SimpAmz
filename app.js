@@ -641,7 +641,7 @@ app.get('/viewUsers', function(req, res) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "User must log in to view the users' information.",
-            "E_POST_VIEW_USER_01", null
+            "E_GET_VIEW_USER_01", null
         ));
     }
 
@@ -650,7 +650,7 @@ app.get('/viewUsers', function(req, res) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "Only admin can view users' information.",
-            "E_POST_VIEW_USER_02", null
+            "E_GET_VIEW_USER_02", null
         ));
     }
 
@@ -663,7 +663,7 @@ app.get('/viewUsers', function(req, res) {
             return res.json(ret_value(
                 failure_msg_base,
                 ERR_MSG_DB_CONN_ERR + err,
-                "E_POST_VIEW_USER_03", null
+                "E_GET_VIEW_USER_03", null
             ));    // Return
         }
 
@@ -679,12 +679,55 @@ app.get('/viewUsers', function(req, res) {
                 return res.json(ret_value(
                     failure_msg_base,
                     ERR_MSG_DB_SELECT_ERR + err,
-                    "E_POST_VIEW_USER_04",
+                    "E_GET_VIEW_USER_04",
                     sql_stmt
                 ));    // Return
             }
 
             // User information has been selected.
+            res.json(rows);
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
+// View Products
+
+app.get('/getProducts', function(req, res) {
+    var failure_msg_base = "There was a problem with this action";
+
+    // "View Products" does not require user login.
+
+    var id = emptize(req.body.productId);
+    var category = emptize(req.body.category);
+    var keyword = emptize(req.body.keyword);
+
+    // Find the product information from the database.
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.json(ret_value(
+                failure_msg_base,
+                ERR_MSG_DB_CONN_ERR + err,
+                "E_GET_VIEW_PROD_01", null
+            ));    // Return
+        }
+
+        // Build the search criteria.
+        // TODO: Implement me!
+
+        var sql_stmt = "SELECT Product.Title, Product.Category, Product.Description FROM Product ";
+
+        conn.query(sql_stmt, function(err, rows) {    // func_02
+            if (err) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_DB_SELECT_ERR + err,
+                    "E_GET_VIEW_PROD_02",
+                    sql_stmt
+                ));    // Return
+            }
+
+            // Product information has been selected.
             res.json(rows);
         }); // func_02
     }); // func_01
