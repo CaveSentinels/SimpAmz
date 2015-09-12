@@ -51,7 +51,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================================================
-// Shared function
+// Utility functions
 
 function _NU(obj) {
     return (obj == null || obj == undefined);
@@ -180,12 +180,11 @@ app.post("/registerUser", function(req, res) {
     if (state) {
         if (valid_state_abbr.indexOf(state.toUpperCase()) == -1) {
             // Meaning that state's value is not a valid state abbreviation.
-            res.json(ret_value(
+            return res.json(ret_value(
                 failure_msg_base,
                 "Invalid state abbreviation: " + state,
                 "E_POST_REG_USER_01", null
             )); // Return
-            return;
         }
     }
 
@@ -193,12 +192,11 @@ app.post("/registerUser", function(req, res) {
     if (zip) {
         if (!zip_code_pattern.test(zip)) {
             // Meaning that zip's value is not a 5-digit zip code.
-            res.json(ret_value(
+            return res.json(ret_value(
                 failure_msg_base,
                 "Invalid zip code: " + zip,
                 "E_POST_REG_USER_02", null
             ));    // Return
-            return;
         }
     }
 
@@ -207,111 +205,105 @@ app.post("/registerUser", function(req, res) {
     if (email) {
         if (!email_pattern.test(email)) {
             // Meaning that email's value is not a valid email address.
-            res.json(ret_value(
+            return res.json(ret_value(
                 failure_msg_base,
                 "Invalid email format: " + email,
                 "E_POST_REG_USER_03", null
             ));    // Return
-            return;
         }
+    }
+
+    // Validate parameter: user name must not be empty and must not exist.
+    if (!uname || uname == "") {
+        // Meaning that uname is empty, which is not allowed.
+        return res.json(ret_value(
+            failure_msg_base,
+            "User name must not be empty.",
+            "E_POST_REG_USER_05", null
+        ));    // Return
+    }
+
+    // Validate parameter: password must not be empty and must not exist.
+    if (!pwd || pwd == "") {
+        // Meaning that pwd is empty, which is not allowed.
+        return res.json(ret_value(
+            failure_msg_base,
+            "Password must not be empty.",
+            "E_POST_REG_USER_06", null
+        ));    // Return
     }
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            res.json(ret_value(
+            return res.json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_REG_USER_04", null
             ));    // Return
-            return;
         }
 
-        // Validate parameter: user name must not be empty and must not exist.
-        if (!uname || uname == "") {
-            // Meaning that uname is empty, which is not allowed.
-            res.json(ret_value(
-                failure_msg_base,
-                "User name must not be empty.",
-                "E_POST_REG_USER_05", null
-            ));    // Return
-            return;
-        } else if (!pwd || pwd == "") {
-            // Meaning that pwd is empty, which is not allowed.
-            res.json(ret_value(
-                failure_msg_base,
-                "Password must not be empty.",
-                "E_POST_REG_USER_06", null
-            ));    // Return
-            return;
-        } else {
-            var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" + _Q(uname);
-            conn.query(sql_stmt, function(err, rows) {    // func_02
-                if (err) {
-                    res.json(ret_value(
+        var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" + _Q(uname);
+        conn.query(sql_stmt, function(err, rows) {    // func_02
+            if (err) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    "Database QUERY error: " + err,
+                    "E_POST_REG_USER_07",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length > 0) {
+                    return res.json(ret_value(
                         failure_msg_base,
-                        "Database QUERY error: " + err,
-                        "E_POST_REG_USER_07",
+                        "User name already exists: " + uname,
+                        "E_POST_REG_USER_08",
+                        null
+                    ));    // Return
+                }
+            }
+
+            // Now we know that the uname doesn't exist. We can create
+            // the user account.
+            sql_stmt = "INSERT INTO User (Name, Password, Role) VALUES (" +
+                _Q(uname) + ", " + _Q(pwd) + ", 'Customer')";
+            conn.query(sql_stmt, function(err, result) {    // func_03
+                if (err) {
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Database INSERT INTO error: " + err,
+                        "E_POST_REG_USER_09",
                         sql_stmt
                     ));    // Return
-                    return;
                 } else {
-                    if (rows.length > 0) {
-                        res.json(ret_value(
-                            failure_msg_base,
-                            "User name already exists: " + uname,
-                            "E_POST_REG_USER_08",
-                            null
-                        ));    // Return
-                        return;
-                    }
+                    var uid = result.insertId;
+                    // Insert the contact information.
+                    // It is possible that the user doesn't provide any
+                    // contact information. In this case, we just Insert
+                    // an empty row in the database.
+                    sql_stmt = "INSERT INTO UserContact " +
+                        "(FName, LName, Addr, City, State, Zip, Email, UserID) " +
+                        "VALUES (" + _Q(fname) + ", " + _Q(lname) + ", " +
+                        _Q(addr) + ", " + _Q(city) + ", " + _Q(state) + ", " +
+                        _Q(zip) + ", " + _Q(email) + ", " + _Q(uid) + ")";
+                    conn.query(sql_stmt, function(err, result) {    // func_04
+                        if (err) {
+                            return res.json(ret_value(
+                                failure_msg_base,
+                                "Database INSERT INTO error: " + err,
+                                "E_POST_REG_USER_10",
+                                sql_stmt
+                            ));    // Return
+                        } else {
+                            // OK. Finally we've done everything.
+                            // Return success.
+                            return res.json(ret_value(
+                                success_msg_base, null, null, null
+                            ));    // Return
+                        }
+                    }); // func_04
                 }
-
-                // Now we know that the uname doesn't exist. We can create
-                // the user account.
-                sql_stmt = "INSERT INTO User (Name, Password, Role) VALUES (" +
-                    _Q(uname) + ", " + _Q(pwd) + ", 'Customer')";
-                conn.query(sql_stmt, function(err, result) {    // func_03
-                    if (err) {
-                        res.json(ret_value(
-                            failure_msg_base,
-                            "Database INSERT INTO error: " + err,
-                            "E_POST_REG_USER_09",
-                            sql_stmt
-                        ));    // Return
-                        return;
-                    } else {
-                        var uid = result.insertId;
-                        // Insert the contact information.
-                        // It is possible that the user doesn't provide any
-                        // contact information. In this case, we just Insert
-                        // an empty row in the database.
-                        sql_stmt = "INSERT INTO UserContact " +
-                            "(FName, LName, Addr, City, State, Zip, Email, UserID) " +
-                            "VALUES (" + _Q(fname) + ", " + _Q(lname) + ", " +
-                            _Q(addr) + ", " + _Q(city) + ", " + _Q(state) + ", " +
-                            _Q(zip) + ", " + _Q(email) + ", " + _Q(uid) + ")";
-                        conn.query(sql_stmt, function(err, result) {    // func_04
-                            if (err) {
-                                res.json(ret_value(
-                                    failure_msg_base,
-                                    "Database INSERT INTO error: " + err,
-                                    "E_POST_REG_USER_10",
-                                    sql_stmt
-                                ));    // Return
-                                return;
-                            } else {
-                                // OK. Finally we've done everything.
-                                // Return success.
-                                res.json(ret_value(
-                                    success_msg_base, null, null, null
-                                ));    // Return
-                                return;
-                            }
-                        }); // func_04
-                    }
-                }); // func_03
-            }); // func_02
-        }
+            }); // func_03
+        }); // func_02
     }); // func_01
 });
 
@@ -357,6 +349,151 @@ app.post('/logout', function(req, res) {
             null, null, null
         ));
     }
+});
+
+// ============================================================================
+// Update Contact Information
+
+function sql_set_field_value(conn, field, value, sep) {
+    return (_NU(value) ? "" : ("`" + field + "`=" + conn.escape(value) + sep));
+}
+
+function db_update_user(conn, user_info) {
+    var failure_msg_base = "Contact info update failed: ";
+    var success_msg_base = "Your information has been updated.";
+
+    var assignments =
+        sql_set_field_value(conn, "uName", user_info.uname, ",") +
+        sql_set_field_value(conn, "pWord", user_info.pwd, "")
+        ;
+
+    if (assignments != "") {
+        // Only update the User table when there is something to update.
+        var sql_stmt = "UPDATE `User` SET "+ assignments + " WHERE `ID`=" + user_info.id;
+        conn.query(sql_stmt, function(err, result) {    // func_02
+            if (err) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    "Database UPDATE error: " + err,
+                    "E_POST_UPDATE_INFO_06",
+                    sql_stmt
+                ));    // Return
+            } else {
+                // OK. Finally we've done everything.
+                // Return success.
+                return res.json(ret_value(
+                    success_msg_base, null, null, null
+                ));    // Return
+            }
+        }); // func_02
+    }
+}
+
+app.post('/updateInfo', function(req, res) {
+    var failure_msg_base = "Contact info update failed: ";
+    var success_msg_base = "Your information has been updated.";
+
+    if (!req.isAuthenticated()) {
+        return res.json(ret_value(
+            failure_msg_base,
+            "Not authenticated.",
+            "E_POST_UPDATE_INFO_01",
+            null
+        ));
+    }
+
+    var user_info = {
+        id : req.user.id,
+        fname : req.body.fName,
+        lname : req.body.lName,
+        addr : req.body.address,
+        city : req.body.city,
+        state = req.body.state,
+        zip = req.body.zip,
+        email = req.body.email,
+        uname = req.body.uName,
+        pwd = req.body.pWord
+    };
+
+    // Validate parameter: state
+    if (user_info.state) {
+        if (valid_state_abbr.indexOf(user_info.state.toUpperCase()) == -1) {
+            // Meaning that state's value is not a valid state abbreviation.
+            return res.json(ret_value(
+                failure_msg_base,
+                "Invalid state abbreviation: " + user_info.state,
+                "E_POST_UPDATE_INFO_02", null
+            )); // Return
+        }
+    }
+
+    // Validate parameter: zip code.
+    if (user_info.zip) {
+        if (!zip_code_pattern.test(user_info.zip)) {
+            // Meaning that zip's value is not a 5-digit zip code.
+            return res.json(ret_value(
+                failure_msg_base,
+                "Invalid zip code: " + user_info.zip,
+                "E_POST_UPDATE_INFO_03", null
+            ));    // Return
+        }
+    }
+
+    // Validate parameter: email format.
+    // We assume that if the format is correct, the email is valid.
+    if (user_info.email) {
+        if (!email_pattern.test(user_info.email)) {
+            // Meaning that email's value is not a valid email address.
+            return res.json(ret_value(
+                failure_msg_base,
+                "Invalid email format: " + user_info.email,
+                "E_POST_UPDATE_INFO_04", null
+            ));    // Return
+        }
+    }
+
+    // Update the database.
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_UPDATE_INFO_05", null
+            ));    // Return
+        }
+
+        // Create the value assignments in the SET part.
+        var assignments = sql_set_field_value(conn, "fName", user_info.fname, ",") +
+            sql_set_field_value(conn, "lName", user_info.lname, ",") +
+            sql_set_field_value(conn, "addr", user_info.addr, ",") +
+            sql_set_field_value(conn, "city", user_info.city, ",") +
+            sql_set_field_value(conn, "state", user_info.state, ",") +
+            sql_set_field_value(conn, "zip", user_info.zip, ",") +
+            sql_set_field_value(conn, "email", user_info.email, "")
+            ;
+
+        if (assignments != "") {
+            // Only update the UserContact table when there is something to update.
+            var sql_stmt = "UPDATE `UserContact` SET "+ assignments + " WHERE `ID`=" + user_info.id;
+            conn.query(sql_stmt, function(err, result) {    // func_02
+                if (err) {
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Database UPDATE error: " + err,
+                        "E_POST_UPDATE_INFO_06",
+                        sql_stmt
+                    ));    // Return
+                } else {
+                    // Update the User table.
+                    return db_update_user(conn, user_info);
+                }
+            }); // func_02
+        } else {
+            // If there is nothing to update to the UserContact table,
+            // then only update the User table.
+            return db_update_user(conn, user_info);
+        }
+    }); // func_01
 });
 
 // ============================================================================
