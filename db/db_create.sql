@@ -57,3 +57,11 @@ DELETE FROM User WHERE ID > 3;
 
 SELECT * FROM UserContact;
 SELECT * FROM User;
+
+SELECT User.Name, User.Role, UserContact.FName, UserContact.LName, UserContact.Addr, 
+UserContact.City, UserContact.State, UserContact.Zip, UserContact.Email 
+FROM User 
+INNER JOIN UserContact 
+ON User.ID = UserContact.UserID
+WHERE UserContact.FName LIKE "%o%" OR UserContact.LName LIKE "%x%"
+;

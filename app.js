@@ -45,6 +45,7 @@ var USER_ROLE_ADMIN = "Admin";
 
 var ERR_MSG_AUTH_FAILURE = "Authentication failed: ";
 var ERR_MSG_DB_CONN_ERR = "Database connection error: ";
+var ERR_MSG_DB_SELECT_ERR = "Database SELECT error: ";
 var ERR_MSG_DB_DELETE_ERR = "Database DELETE error: ";
 
 // ============================================================================
@@ -625,6 +626,66 @@ app.post('/modifyProduct', function(req, res) {
                 success_msg_base,
                 null, null, null
             ));
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
+// View Users
+
+app.get('/viewUsers', function(req, res) {
+    var failure_msg_base = "There was a problem with this action";
+
+    // Authenticate the user
+    if (!req.isAuthenticated()) {
+        return res.json(ret_value(
+            failure_msg_base,
+            ERR_MSG_AUTH_FAILURE + "User must log in to view the users' information.",
+            "E_POST_VIEW_USER_01", null
+        ));
+    }
+
+    // Check if the user is an admin.
+    if (req.user.role != USER_ROLE_CUSTOMER) {
+        return res.json(ret_value(
+            failure_msg_base,
+            ERR_MSG_AUTH_FAILURE + "Only admin can view users' information.",
+            "E_POST_VIEW_USER_02", null
+        ));
+    }
+
+    var fname = emptize(req.body.fName);
+    var lname = emptize(req.body.lName);
+
+    // Find the user information from the database.
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.json(ret_value(
+                failure_msg_base,
+                ERR_MSG_DB_CONN_ERR + err,
+                "E_POST_VIEW_USER_03", null
+            ));    // Return
+        }
+
+        var sql_stmt = "SELECT User.Name, User.Role, UserContact.FName, "
+            "UserContact.LName, UserContact.Addr, UserContact.City, UserContact.State, "
+            "UserContact.Zip, UserContact.Email "
+            "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID "
+            "WHERE UserContact.FName LIKE '%" + fname + "%' OR UserContact.LName LIKE '%" + lname + "%'";
+            ;
+
+        conn.query(sql_stmt, function(err, rows) {    // func_02
+            if (err) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_DB_SELECT_ERR + err,
+                    "E_POST_VIEW_USER_04",
+                    sql_stmt
+                ));    // Return
+            }
+
+            // User information has been selected.
+            res.json(rows);
         }); // func_02
     }); // func_01
 });
