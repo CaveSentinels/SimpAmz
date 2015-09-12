@@ -40,6 +40,9 @@ var email_pattern = new RegExp("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+
 
 // ============================================================================
 
+var USER_ROLE_CUSTOMER = "Customer";
+var USER_ROLE_ADMIN = "Admin";
+
 var ERR_MSG_AUTH_FAILURE = "Authentication failed: ";
 var ERR_MSG_DB_CONN_ERR = "Database connection error: ";
 var ERR_MSG_DB_DELETE_ERR = "Database DELETE error: ";
@@ -562,6 +565,67 @@ app.post('/updateInfo', function(req, res) {
             // then only update the User table.
             return db_update_user(conn, user_info);
         }
+    }); // func_01
+});
+
+// ============================================================================
+// Modify Products
+
+app.post('/modifyProduct', function(req, res) {
+    var success_msg_base = "The product information has been updated";
+    var failure_msg_base = "There was a problem with this action";
+
+    // Authenticate the user
+    if (!req.isAuthenticated()) {
+        return res.json(ret_value(
+            failure_msg_base,
+            ERR_MSG_AUTH_FAILURE + "User must log in to modify the product information.",
+            "E_POST_MODIFY_PROD_01", null
+        ));
+    }
+
+    // Check if the user is an admin.
+    if (req.user.role != USER_ROLE_CUSTOMER) {
+        return res.json(ret_value(
+            failure_msg_base,
+            ERR_MSG_AUTH_FAILURE + "Only admin can modify product information",
+            "E_POST_MODIFY_PROD_02", null
+        ));
+    }
+
+    // Update the product info in database.
+    // Update the database.
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_MODIFY_PROD_03", null
+            ));    // Return
+        }
+
+        var sql_stmt = "UPDATE `Product` SET " +
+            sql_set_field_value(conn, "ID", prod_info.id, ",") +
+            sql_set_field_value(conn, "Description", prod_info.description, ",") +
+            sql_set_field_value(conn, "Title", prod_info.title, "") +
+            ;
+
+        conn.query(sql_stmt, function(err, result) {    // func_02
+            if (err) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    "Database UPDATE error: " + err,
+                    "E_POST_MODIFY_PROD_04",
+                    sql_stmt
+                ));    // Return
+            }
+
+            // Product info update succeeded.
+            res.json(ret_value(
+                success_msg_base,
+                null, null, null
+            ));
+        }); // func_02
     }); // func_01
 });
 
