@@ -101,7 +101,47 @@ function session_create(user_id, user_role) {
 }
 
 function session_save(session_info) {
+    for (var index = 0; index < g_sessions.length; index++) {
+        if (_NU(g_sessions[index])) {
+            g_sessions[index] = session_info;
+            return;
+        }
+    }
+
     g_sessions.push(session_info);
+}
+
+function session_in(sessionID) {
+    var index;
+    for (index = 0; index < g_sessions.length; index++) {
+        var s = g_sessions[index];
+        if (!_NU(s) && s.sid == sessionID) {
+            return true;    // The session is found.
+        }
+    }
+    return false;   // The session is not found.
+}
+
+function session_delete(sessionID) {
+    var index;
+    for (index = 0; index < g_sessions.length; index++) {
+        var s = g_sessions[index];
+        if (!_NU(s) && s.sid == sessionID) {
+            delete g_sessions[index];
+            return true;    // Deleted.
+        }
+    }
+    return false;   // The session is not found.
+}
+
+function session_print() {
+    var index;
+    for (index = 0; index < g_sessions.length; index++) {
+        var s = g_sessions[index];
+        if (!_NU(s)) {
+            console.log("Session { \n" + "\tSID: " + s.sid + "\n" + "\tUID: " + s.uid + "\n" + "\tRole: " + s.role + "\n}\n");
+        }
+    }
 }
 
 // ============================================================================
@@ -401,6 +441,8 @@ app.post('/login', function(req, res) {
             if (rows.length == 1) {
                 // User authentication succeeded. Create a session for him/her.
                 var session_info = session_create(rows[0].ID, rows[0].Role);
+                session_save(session_info);
+                session_print();    // TODO: Delete me!
                 // Return the allowed menu items.
                 var menu_list = get_role_menu(req.baseUrl, rows[0].Role);
                 // Respond.
@@ -431,17 +473,25 @@ app.post('/login', function(req, res) {
 // Logout
 
 app.post('/logout', function(req, res) {
-    if (req.isAuthenticated()) {
-        // If the user has logged in before, we then logout.
-        req.logout();
-        res.json(ret_value(
-            "You have been logged out.",
+    session_print();    // TODO: Delete me!
+
+    var success_msg_base = "You have been logged out";
+    var failure_msg_base = "You are not currently logged in";
+
+    var sessionID = emptize(req.body.sessionID);
+
+    if (session_in(sessionID)) {
+        // If the user has logged in before, we then log him/her out.
+        session_delete(sessionID);
+        session_print();    // TODO: Delete me!
+        return res.json(ret_value(
+            success_msg_base,
             null, null, null
         ));
     } else {
-        // If no user has logged in before, we tell them.
-        res.json(ret_value(
-            "You are not currently logged in.",
+        // If the user has not logged in before, we tell him/her.
+        return res.json(ret_value(
+            failure_msg_base,
             null, null, null
         ));
     }

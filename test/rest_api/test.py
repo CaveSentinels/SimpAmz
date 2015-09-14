@@ -79,9 +79,9 @@ def Login(uname, pwd) :
 
 # =============================================================================
 
-def Logout() :
+def Logout(session_id) :
     raw_data = {
-        # Empty
+        'sessionID' : session_id
     }
     data = urllib.urlencode(raw_data)
     req = urllib2.Request(http_request_local_base + "/logout", data)
@@ -111,6 +111,13 @@ def Test_Login() :
 
 # =============================================================================
 
+def Test_Logout() :
+    PrintRes(Logout.__name__, Logout("33_1442259036241"))
+    PrintRes(Logout.__name__, Logout("34_1442259036266"))
+    PrintRes(Logout.__name__, Logout("32_1442259088778"))
+
+# =============================================================================
+
 def TestScript1() :
     PrintRes(RegisterUser.__name__, RegisterUser(uname="yaobinw", pwd="password"))
     # PrintRes(Login.__name__, Login("yaobinw", "password"))
@@ -120,8 +127,9 @@ def TestScript1() :
 # =============================================================================
 
 def Main( args ) :
-    Test_Registration()
+    # Test_Registration()
     Test_Login()
+    Test_Logout()
 
 # =============================================================================
 
