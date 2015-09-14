@@ -86,6 +86,45 @@ function _Q(str) {
 }
 
 // ============================================================================
+// Session management
+
+// The in-memory session manager.
+var g_sessions = [];
+
+function session_create(user_id, user_role) {
+    var curr_date_time_value = new Date().valueOf();
+    return {
+        sid : user_id + "_" + curr_date_time_value,     // session ID
+        uid : user_id,         // user ID
+        role : user_role      // user's role
+    };
+}
+
+function session_save(session_info) {
+    g_sessions.push(session_info);
+}
+
+// ============================================================================
+// Helper functions
+
+function get_role_menu(base_url, user_role) {
+    if (user_role == "Admin") {
+        return [
+            base_url + "/" + "modifyProduct",
+            base_url + "/" + "viewUsers",
+            base_url + "/" + "getProducts"
+        ];
+    } else if (user_role == "Customer") {
+        return [
+            base_url + "/" + "updateInfo",
+            base_url + "/" + "getProducts"
+        ];
+    }
+
+    return [];  // Wrong user role so we return empty menu list.
+}
+
+// ============================================================================
 // Register new user as Customer.
 
 app.post("/registerUser", function(req, res) {
@@ -298,39 +337,6 @@ app.post('/unregisterUser', function(req, res) {
 
 // ============================================================================
 // Login
-
-// The in-memory session manager.
-var g_sessions = [];
-
-function session_create(user_id, user_role) {
-    var curr_date_time_value = new Date().valueOf();
-    return {
-        sid : user_id + "_" + curr_date_time_value,     // session ID
-        uid : user_id,         // user ID
-        role : user_role      // user's role
-    };
-}
-
-function session_save(session_info) {
-    g_sessions.push(session_info);
-}
-
-function get_role_menu(base_url, user_role) {
-    if (user_role == "Admin") {
-        return [
-            base_url + "/" + "modifyProduct",
-            base_url + "/" + "viewUsers",
-            base_url + "/" + "getProducts"
-        ];
-    } else if (user_role == "Customer") {
-        return [
-            base_url + "/" + "updateInfo",
-            base_url + "/" + "getProducts"
-        ];
-    }
-
-    return [];  // Wrong user role so we return empty menu list.
-}
 
 app.post('/login', function(req, res) {
     var failure_msg_base = "That username and password combination was not correct";
