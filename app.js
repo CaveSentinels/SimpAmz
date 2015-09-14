@@ -111,6 +111,17 @@ function session_save(session_info) {
     g_sessions.push(session_info);
 }
 
+function session_find(sessionID) {
+    var index;
+    for (index = 0; index < g_sessions.length; index++) {
+        var s = g_sessions[index];
+        if (!_NU(s) && s.sid == sessionID) {
+            return s;    // The session is found.
+        }
+    }
+    return null;   // The session is not found.
+}
+
 function session_in(sessionID) {
     var index;
     for (index = 0; index < g_sessions.length; index++) {
@@ -649,8 +660,10 @@ app.post('/modifyProduct', function(req, res) {
     var success_msg_base = "The product information has been updated";
     var failure_msg_base = "There was a problem with this action";
 
+    var session_info = session_find(emptize(req.body.sessionID));
+
     // Authenticate the user
-    if (!req.isAuthenticated()) {
+    if (_NU(session_info)) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "User must log in to modify the product information.",
@@ -659,7 +672,7 @@ app.post('/modifyProduct', function(req, res) {
     }
 
     // Check if the user is an admin.
-    if (req.user.role != USER_ROLE_CUSTOMER) {
+    if (session_info.role != USER_ROLE_CUSTOMER) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "Only admin can modify product information",
