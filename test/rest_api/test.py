@@ -11,6 +11,7 @@
 import urllib
 import urllib2
 import sys
+import json
 
 
 # =============================================================================
@@ -22,7 +23,12 @@ http_request_local_base = "http://localhost:3000"
 def PrintRes(action, res) :
     print "=" * 20
     print action
-    print res
+    response = json.loads(res)
+    print "Response:"
+    print "\tMessage: " + response["message"]
+    print "\tDetails: " + response["details"]
+    print "\tCode:    " + response["code"]
+    print "\tMore:    " + response["more"]
 
 # =============================================================================
 
@@ -83,16 +89,29 @@ def Logout() :
 
 # =============================================================================
 
+def Test_Registration() :
+    PrintRes(RegisterUser.__name__, RegisterUser(uname="user1", pwd="password1"))
+    PrintRes(RegisterUser.__name__, RegisterUser(uname="user2", pwd="password2", state="XX"))
+    PrintRes(RegisterUser.__name__, RegisterUser(uname="user2", pwd="password2", state="PA", zip="1a5b3"))
+    PrintRes(RegisterUser.__name__, RegisterUser(uname="user2", pwd="password2", state="PA", zip="15213", email="abc"))
+    PrintRes(RegisterUser.__name__, RegisterUser(uname="user2", pwd="password2",
+                                                 fname="Yaobin", lname="Wen",
+                                                 addr="4750 Centre Ave.", city="Pittsburgh", state="PA", zip="12345",
+                                                 email="user1@simpamz.com"))
+
+
+# =============================================================================
+
 def TestScript1() :
     PrintRes(RegisterUser.__name__, RegisterUser(uname="yaobinw", pwd="password"))
-    PrintRes(Login.__name__, Login("yaobinw", "password"))
+    # PrintRes(Login.__name__, Login("yaobinw", "password"))
     # PrintRes(UnregisterUser.__name__, UnregisterUser())
-    PrintRes(Logout.__name__, Logout())
+    # PrintRes(Logout.__name__, Logout())
 
 # =============================================================================
 
 def Main( args ) :
-    TestScript1()
+    Test_Registration()
 
 # =============================================================================
 

@@ -31,12 +31,15 @@ var valid_state_abbr = [
     "VA","WA","WV","WI","WY"
 ];
 
-var zip_code_pattern = new RegExp("^\d{5}$", "g");
+// Do not use the "g" flag if you don't want to reset the index.
+// See this post for more info:
+// http://stackoverflow.com/a/1520853/630364
+var zip_code_pattern = /^\d{5}$/;
 
 // The email address regex pattern is found here:
 // http://stackoverflow.com/a/1373724/630364
 // God knows how the IETF guys figured out such a complex pattern...
-var email_pattern = new RegExp("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", "g");
+var email_pattern = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
 
 // ============================================================================
 
@@ -75,7 +78,8 @@ function emptize(str) {
 
 function ret_value(msg_base, msg_detail, err_code, more_info) {
     return {
-        message : emptize(msg_base) + emptize(msg_detail),
+        message : emptize(msg_base),
+        details : emptize(msg_detail),
         code : emptize(err_code),
         more : emptize(more_info)
     };
@@ -174,8 +178,8 @@ app.use(passport.session());
 
 app.post("/registerUser", function(req, res) {
     // Define the default return message.
-    var success_msg_base = "Your account has been registered.";
-    var failure_msg_base = "Account registration failed: ";
+    var success_msg_base = "Your account has been registered";
+    var failure_msg_base = "there was a problem with your registration";
 
     // Get the registration parameters.
     var fname = req.body.fName;
@@ -608,7 +612,7 @@ app.post('/modifyProduct', function(req, res) {
         var sql_stmt = "UPDATE `Product` SET " +
             sql_set_field_value(conn, "ID", prod_info.id, ",") +
             sql_set_field_value(conn, "Description", prod_info.description, ",") +
-            sql_set_field_value(conn, "Title", prod_info.title, "") +
+            sql_set_field_value(conn, "Title", prod_info.title, "")
             ;
 
         conn.query(sql_stmt, function(err, result) {    // func_02
