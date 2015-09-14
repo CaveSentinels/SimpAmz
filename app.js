@@ -43,6 +43,7 @@ var USER_ROLE_CUSTOMER = "Customer";
 var USER_ROLE_ADMIN = "Admin";
 
 var ERR_MSG_AUTH_FAILURE = "Authentication failed: ";
+var ERR_MSG_PARAM = "Parameter error: ";
 var ERR_MSG_DB_CONN_ERR = "Database connection error: ";
 var ERR_MSG_DB_SELECT_ERR = "Database SELECT error: ";
 var ERR_MSG_DB_DELETE_ERR = "Database DELETE error: ";
@@ -66,6 +67,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function _NU(obj) {
     return (obj == null || obj == undefined);
+}
+
+function _NUE(obj) {
+    return (obj == null || obj == undefined || obj == "");
 }
 
 function emptize(str) {
@@ -669,11 +674,26 @@ app.post('/modifyProduct', function(req, res) {
     }
 
     // Check if the user is an admin.
-    if (session_info.role != USER_ROLE_CUSTOMER) {
+    if (session_info.role != USER_ROLE_ADMIN) {
         return res.json(ret_value(
             failure_msg_base,
-            ERR_MSG_AUTH_FAILURE + "Only admin can modify product information",
+            ERR_MSG_AUTH_FAILURE + "Only admin can modify product information.",
             "E_POST_MODIFY_PROD_02", null
+        ));
+    }
+
+    var prod_info = {
+        id : req.body.productId,
+        description : req.body.productDescription,
+        title : req.body.productTitle
+    };
+
+    // ID must be provided.
+    if (_NUE(prod_info.id)) {
+        return res.json(ret_value(
+            failure_msg_base,
+            ERR_MSG_PARAM + "productId must not be empty.",
+            "E_POST_MODIFY_PROD_05", null
         ));
     }
 
@@ -688,10 +708,18 @@ app.post('/modifyProduct', function(req, res) {
             ));    // Return
         }
 
+        // Only update when there is something to update.
+        if (_NU(prod_info.description) && _NU(prod_info.title)) {
+            return res.json(ret_value(
+                success_msg_base,
+                null, null, null
+            ));
+        }
+
         var sql_stmt = "UPDATE `Product` SET " +
-            sql_set_field_value(conn, "ID", prod_info.id, ",") +
             sql_set_field_value(conn, "Description", prod_info.description, ",") +
-            sql_set_field_value(conn, "Title", prod_info.title, "")
+            sql_set_field_value(conn, "Title", prod_info.title, "") +
+            " WHERE `ID`=" + prod_info.id;
             ;
 
         conn.query(sql_stmt, function(err, result) {    // func_02
@@ -705,7 +733,7 @@ app.post('/modifyProduct', function(req, res) {
             }
 
             // Product info update succeeded.
-            res.json(ret_value(
+            return res.json(ret_value(
                 success_msg_base,
                 null, null, null
             ));

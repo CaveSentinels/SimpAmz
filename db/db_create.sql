@@ -70,7 +70,8 @@ INSERT INTO Product (ID, Description, Category, Title) VALUES (3, "Diet Coke bot
 # Reinitialize database.
 
 DELETE FROM UserContact WHERE ID >= 1;
-DELETE FROM User WHERE ID > 1;
+DELETE FROM User WHERE ID >= 1;
+DELETE FROM Product WHERE ID >= 1;
 
 SELECT * FROM UserContact;
 SELECT * FROM User;
