@@ -794,9 +794,9 @@ app.get('/getProducts', function(req, res) {
 
     // "View Products" does not require user login.
 
-    var id = emptize(req.body.productId);
-    var category = emptize(req.body.category);
-    var keyword = emptize(req.body.keyword);
+    var id = emptize(req.query.productId);
+    var category = emptize(req.query.category);
+    var keyword = emptize(req.query.keyword);
 
     // Find the product information from the database.
     pool.getConnection(function(err, conn) {    // func_01
@@ -809,9 +809,18 @@ app.get('/getProducts', function(req, res) {
         }
 
         // Build the search criteria.
-        // TODO: Implement me!
-
-        var sql_stmt = "SELECT Product.Title, Product.Category, Product.Description FROM Product ";
+        var sql_stmt;
+        if (id != "") {
+            // If ID is provided, then we can search for the specific product.
+            sql_stmt = "SELECT `ID`, `Title` FROM `Product` WHERE `ID`=" + conn.escape(id);
+        } else {
+            // conn.escape() will put a pair of '' around the variables' values
+            // and caused SQL syntax errors. So please do not use them.
+            sql_stmt = "SELECT `ID`, `Title` FROM `Product` WHERE `Category` LIKE '%" +
+                category + "%' AND (`Title` LIKE '%" +
+                keyword + "%' OR `Description` LIKE '%" +
+                keyword + "%')";
+        }
 
         conn.query(sql_stmt, function(err, rows) {    // func_02
             if (err) {
@@ -824,7 +833,9 @@ app.get('/getProducts', function(req, res) {
             }
 
             // Product information has been selected.
-            res.json(rows);
+            res.json({
+                product_list : rows
+            });
         }); // func_02
     }); // func_01
 });

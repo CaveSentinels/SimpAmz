@@ -61,6 +61,10 @@ CREATE TABLE `Product` (
 -- INSERT INTO User (Name, Password, Role) VALUES ('tbucktoo', 'bucktoo', 'Customer');
 INSERT INTO User (Name, Password, Role) VALUES ('jadmin', 'admin', 'Admin');
 
+INSERT INTO Product (ID, Description, Category, Title) VALUES (1, "Mac Book Pro", "Computer", "MacPro");
+INSERT INTO Product (ID, Description, Category, Title) VALUES (2, "Robin's coffee cup", "Appliance", "Cup");
+INSERT INTO Product (ID, Description, Category, Title) VALUES (3, "Diet Coke bottle", "Trash", "Bottle");
+
 
 # ================================================================================
 # Reinitialize database.
@@ -70,6 +74,7 @@ DELETE FROM User WHERE ID > 1;
 
 SELECT * FROM UserContact;
 SELECT * FROM User;
+SELECT * FROM Product;
 
 
 # ================================================================================
