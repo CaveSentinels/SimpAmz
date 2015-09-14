@@ -4,7 +4,6 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var session = require('express-session');
 
 var mysql = require('mysql');
 var pool = mysql.createPool({
@@ -18,9 +17,6 @@ var pool = mysql.createPool({
 });
 
 var app = express();
-
-var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
 
 // ============================================================================
 
@@ -88,90 +84,6 @@ function ret_value(msg_base, msg_detail, err_code, more_info) {
 function _Q(str) {
     return "\"" + emptize(str) + "\"";
 }
-
-// ============================================================================
-// User authentication
-
-passport.use(new LocalStrategy(
-    function(username, password, done) {
-        var failure_msg_base = "Authentication failed: ";
-        var success_msg_base = "Authentication succeeded.";
-
-        pool.getConnection(function(err, conn) {
-            if (err) {
-                return done(new Error(ret_value(
-                    failure_msg_base,
-                    "Database connection error: " + err,
-                    "E_POST_LOGIN_01", null
-                )));
-            }
-
-            var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" +
-                conn.escape(username) + " AND `Password`=" +
-                conn.escape(password) + "";
-
-            conn.query(sql_stmt, function(err, rows) {
-                conn.release();
-                if (err) {
-                    return done(new Error(ret_value(
-                        failure_msg_base,
-                        "Database QUERY error: " + err,
-                        "E_POST_LOGIN_02",
-                        sql_stmt
-                    )));
-                }
-
-                if (rows.length > 1) {
-                    return done(new Error(ret_value(
-                        failure_msg_base,
-                        "Database error: The provided user name matches multiple users.",
-                        "E_POST_LOGIN_03",
-                        _Q(rows.length) + " users."
-                    )));
-                }
-
-                if (rows.length == 0) {
-                    return done(null, false, ret_value(
-                        failure_msg_base,
-                        "Incorrect user name or password.",
-                        "E_POST_LOGIN_04", null
-                    ));
-                }
-
-                if (rows.length == 1) {
-                    var auth_user = {
-                        id : rows[0].ID,
-                        name : rows[0].Name,
-                        role : rows[0].Role
-                    };
-                    return done(null, auth_user);
-                }
-            });
-
-            conn.on('error', function(err) {
-                return done(new Error(ret_value(
-                    failure_msg_base,
-                    "Database connection error: " + err,
-                    "E_POST_LOGIN_05", null
-                )));
-            });
-        });
-    }
-));
-
-passport.serializeUser(function(user, done) {
-    done(null, user);
-});
-
-passport.deserializeUser(function(user, done) {
-    done(null, user);
-});
-
-// Initialize Passport and restore authentication state, if any, from the
-// session.
-app.use(session({ secret: 'robin on rails' })); // Needed!
-app.use(passport.initialize());
-app.use(passport.session());
 
 // ============================================================================
 // Register new user as Customer.
@@ -387,26 +299,127 @@ app.post('/unregisterUser', function(req, res) {
 // ============================================================================
 // Login
 
-app.post('/login', passport.authenticate('local'),
-    function(req, res) {
-        if (req.user.role == "Admin") {
-            res.json({
-                menu : ["Modify Products", "View Users", "View Products"]
-            });
-        } else if (req.user.role == "Customer") {
-            res.json({
-                menu : ["Update Contact Information", "View Products"]
-            });
-        } else {
-            res.json(ret_value(
-                "Incorrect user role",
-                req.user.role,
-                "E_POST_LOGIN_10",
-                null
-            ));
-        }
+// The in-memory session manager.
+var g_sessions = [];
+
+function session_create(user_id, user_role) {
+    var curr_date_time_value = new Date().valueOf();
+    return {
+        sid : user_id + "_" + curr_date_time_value,     // session ID
+        uid : user_id,         // user ID
+        role : user_role      // user's role
+    };
+}
+
+function session_save(session_info) {
+    g_sessions.push(session_info);
+}
+
+function get_role_menu(base_url, user_role) {
+    if (user_role == "Admin") {
+        return [
+            base_url + "/" + "modifyProduct",
+            base_url + "/" + "viewUsers",
+            base_url + "/" + "getProducts"
+        ];
+    } else if (user_role == "Customer") {
+        return [
+            base_url + "/" + "updateInfo",
+            base_url + "/" + "getProducts"
+        ];
     }
-);
+
+    return [];  // Wrong user role so we return empty menu list.
+}
+
+app.post('/login', function(req, res) {
+    var failure_msg_base = "That username and password combination was not correct";
+    var success_msg_base = "Authentication succeeded.";
+
+    var username = emptize(req.body.username);
+    var password = emptize(req.body.password);
+
+    pool.getConnection(function(err, conn) {    // Func_01
+        if (err) {
+            var ret = ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_LOGIN_01", null
+            );
+            ret["menu"] = [];
+            ret["sessionID"] = "";
+            return res.json(ret);
+        }
+
+        var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" +
+            conn.escape(username) + " AND `Password`=" +
+            conn.escape(password) + "";
+
+        conn.query(sql_stmt, function(err, rows) {  // Func_02
+            conn.release();
+            if (err) {
+                var ret = ret_value(
+                    failure_msg_base,
+                    "Database QUERY error: " + err,
+                    "E_POST_LOGIN_02",
+                    sql_stmt
+                );
+                ret["menu"] = [];
+                ret["sessionID"] = "";
+                return res.json(ret);
+            }
+
+            if (rows.length > 1) {
+                var ret = ret_value(
+                    failure_msg_base,
+                    "Database error: The provided user name matches multiple users.",
+                    "E_POST_LOGIN_03",
+                    _Q(rows.length) + " users."
+                );
+                ret["menu"] = [];
+                ret["sessionID"] = "";
+                return res.json(ret);
+            }
+
+            if (rows.length == 0) {
+                var ret = ret_value(
+                    failure_msg_base,
+                    "Incorrect user name or password.",
+                    "E_POST_LOGIN_04", null
+                );
+                ret["menu"] = [];
+                ret["sessionID"] = "";
+                return res.json(ret);
+            }
+
+            if (rows.length == 1) {
+                // User authentication succeeded. Create a session for him/her.
+                var session_info = session_create(rows[0].ID, rows[0].Role);
+                // Return the allowed menu items.
+                var menu_list = get_role_menu(req.baseUrl, rows[0].Role);
+                // Respond.
+                var ret = ret_value(
+                    success_msg_base,
+                    null, null, null
+                );
+                ret["menu"] = menu_list;
+                ret["sessionID"] = session_info.sid;
+                return res.json(ret);
+            }
+        }); // Func_02
+
+        conn.on('error', function(err) {    // Func_03
+            var ret = ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_LOGIN_05", null
+            );
+            ret["menu"] = [];
+            ret["sessionID"] = "";
+            return res.json(ret);
+        }); // Func_03
+    }); // Func_01
+});
 
 // ============================================================================
 // Logout

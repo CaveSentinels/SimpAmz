@@ -32,6 +32,19 @@ CREATE TABLE `UserContact` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
+CREATE TABLE `Session` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `UserID` int(11) DEFAULT NULL,
+  `SHA1` varchar(32) DEFAULT NULL,
+  `LastLogin` datetime NOT NULL,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `SHA1_UNIQUE` (`SHA1`),
+  KEY `UserRef_idx` (`UserID`),
+  KEY `UserRef_Session_idx` (`UserID`),
+  CONSTRAINT `UserRef_Session` FOREIGN KEY (`UserID`) REFERENCES `User` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
 CREATE TABLE `Product` (
   `ID` int(11) NOT NULL AUTO_INCREMENT,
   `Description` varchar(500) DEFAULT NULL,
@@ -44,8 +57,8 @@ CREATE TABLE `Product` (
 # ================================================================================
 # Insert initial data.
 
-INSERT INTO User (Name, Password, Role) VALUES ('hsmith', 'smith', 'Customer');
-INSERT INTO User (Name, Password, Role) VALUES ('tbucktoo', 'bucktoo', 'Customer');
+-- INSERT INTO User (Name, Password, Role) VALUES ('hsmith', 'smith', 'Customer');
+-- INSERT INTO User (Name, Password, Role) VALUES ('tbucktoo', 'bucktoo', 'Customer');
 INSERT INTO User (Name, Password, Role) VALUES ('jadmin', 'admin', 'Admin');
 
 
@@ -53,10 +66,14 @@ INSERT INTO User (Name, Password, Role) VALUES ('jadmin', 'admin', 'Admin');
 # Reinitialize database.
 
 DELETE FROM UserContact WHERE ID >= 1;
-DELETE FROM User WHERE ID > 3;
+DELETE FROM User WHERE ID > 1;
 
 SELECT * FROM UserContact;
 SELECT * FROM User;
+
+
+# ================================================================================
+# Test script.
 
 SELECT User.Name, User.Role, UserContact.FName, UserContact.LName, UserContact.Addr, 
 UserContact.City, UserContact.State, UserContact.Zip, UserContact.Email 

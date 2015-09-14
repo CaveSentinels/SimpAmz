@@ -29,6 +29,8 @@ def PrintRes(action, res) :
     print "\tDetails: " + response["details"]
     print "\tCode:    " + response["code"]
     print "\tMore:    " + response["more"]
+    print "Response(raw):"
+    print "\t" + res
 
 # =============================================================================
 
@@ -99,6 +101,13 @@ def Test_Registration() :
                                                  addr="4750 Centre Ave.", city="Pittsburgh", state="PA", zip="12345",
                                                  email="user1@simpamz.com"))
 
+# =============================================================================
+
+def Test_Login() :
+    PrintRes(Login.__name__, Login("user1", "password1"))
+    PrintRes(Login.__name__, Login("user1", "pass"))
+    PrintRes(Login.__name__, Login("user2", "password2"))
+    PrintRes(Login.__name__, Login("jadmin", "admin"))
 
 # =============================================================================
 
@@ -112,6 +121,7 @@ def TestScript1() :
 
 def Main( args ) :
     Test_Registration()
+    Test_Login()
 
 # =============================================================================
 
