@@ -453,7 +453,6 @@ app.post('/login', function(req, res) {
                 // User authentication succeeded. Create a session for him/her.
                 var session_info = session_create(rows[0].ID, rows[0].Role);
                 session_save(session_info);
-                session_print();    // TODO: Delete me!
                 // Return the allowed menu items.
                 var menu_list = get_role_menu(req.baseUrl, rows[0].Role);
                 // Respond.
@@ -484,7 +483,6 @@ app.post('/login', function(req, res) {
 // Logout
 
 app.post('/logout', function(req, res) {
-    session_print();    // TODO: Delete me!
 
     var success_msg_base = "You have been logged out";
     var failure_msg_base = "You are not currently logged in";
@@ -494,7 +492,6 @@ app.post('/logout', function(req, res) {
     if (session_in(sessionID)) {
         // If the user has logged in before, we then log him/her out.
         session_delete(sessionID);
-        session_print();    // TODO: Delete me!
         return res.json(ret_value(
             success_msg_base,
             null, null, null
@@ -722,8 +719,10 @@ app.post('/modifyProduct', function(req, res) {
 app.get('/viewUsers', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
 
+    var session_info = session_find(emptize(req.query.sessionID));
+
     // Authenticate the user
-    if (!req.isAuthenticated()) {
+    if (_NU(session_info)) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "User must log in to view the users' information.",
@@ -732,7 +731,7 @@ app.get('/viewUsers', function(req, res) {
     }
 
     // Check if the user is an admin.
-    if (req.user.role != USER_ROLE_CUSTOMER) {
+    if (session_info.role != USER_ROLE_ADMIN) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "Only admin can view users' information.",
@@ -740,8 +739,8 @@ app.get('/viewUsers', function(req, res) {
         ));
     }
 
-    var fname = emptize(req.body.fName);
-    var lname = emptize(req.body.lName);
+    var fname = emptize(req.query.fName);
+    var lname = emptize(req.query.lName);
 
     // Find the user information from the database.
     pool.getConnection(function(err, conn) {    // func_01
@@ -753,11 +752,20 @@ app.get('/viewUsers', function(req, res) {
             ));    // Return
         }
 
-        var sql_stmt = "SELECT User.Name, User.Role, UserContact.FName, "
-            "UserContact.LName, UserContact.Addr, UserContact.City, UserContact.State, "
-            "UserContact.Zip, UserContact.Email "
-            "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID "
-            "WHERE UserContact.FName LIKE '%" + fname + "%' OR UserContact.LName LIKE '%" + lname + "%'";
+        // This is the SQL statement that queries everything about user.
+        // We do not need so much information right now, so just comment it
+        // out for future reference.
+        //
+        // var sql_stmt = "SELECT User.Name, User.Role, UserContact.FName, "
+        //     "UserContact.LName, UserContact.Addr, UserContact.City, UserContact.State, "
+        //     "UserContact.Zip, UserContact.Email "
+        //     "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID "
+        //     "WHERE UserContact.FName LIKE '%" + fname + "%' OR UserContact.LName LIKE '%" + lname + "%'";
+        //     ;
+
+        var sql_stmt = "SELECT User.ID, User.Name " +
+            "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID " +
+            "WHERE UserContact.FName LIKE '%" + fname + "%' AND UserContact.LName LIKE '%" + lname + "%'";
             ;
 
         conn.query(sql_stmt, function(err, rows) {    // func_02
@@ -771,7 +779,9 @@ app.get('/viewUsers', function(req, res) {
             }
 
             // User information has been selected.
-            res.json(rows);
+            res.json({
+                user_list : rows
+            });
         }); // func_02
     }); // func_01
 });
