@@ -8,15 +8,9 @@
 
 # =============================================================================
 
-import urllib
-import urllib2
+from api_wrap import *
 import sys
 import json
-
-
-# =============================================================================
-
-http_request_local_base = "http://localhost:3000"
 
 # =============================================================================
 
@@ -31,63 +25,6 @@ def PrintRes(action, res) :
     print "\tMore:    " + response["more"]
     print "Response(raw):"
     print "\t" + res
-
-# =============================================================================
-
-def RegisterUser(uname, pwd, fname="", lname="", addr="", city="", state="", zip="", email="") :
-    raw_data = {
-        'fName' : fname,
-        'lName' : lname,
-        'address' : addr,
-        'city' : city,
-        'state' : state,
-        'zip' : zip,
-        'email' : email,
-        'uName' : uname,
-        'pWord' : pwd
-    }
-    data = urllib.urlencode(raw_data)
-    req = urllib2.Request(http_request_local_base + "/registerUser", data)
-    res = urllib2.urlopen(req)
-
-    return res.read()
-
-# =============================================================================
-
-def UnregisterUser() :
-    raw_data = {
-        # Empty
-    }
-    data = urllib.urlencode(raw_data)
-    req = urllib2.Request(http_request_local_base + "/unregisterUser", data)
-    res = urllib2.urlopen(req)
-
-    return res.read()
-
-# =============================================================================
-
-def Login(uname, pwd) :
-    raw_data = {
-        'username' : uname,
-        'password' : pwd
-    }
-    data = urllib.urlencode(raw_data)
-    req = urllib2.Request(http_request_local_base + "/login", data)
-    res = urllib2.urlopen(req)
-
-    return res.read()
-
-# =============================================================================
-
-def Logout(session_id) :
-    raw_data = {
-        'sessionID' : session_id
-    }
-    data = urllib.urlencode(raw_data)
-    req = urllib2.Request(http_request_local_base + "/logout", data)
-    res = urllib2.urlopen(req)
-
-    return res.read()
 
 # =============================================================================
 
@@ -118,18 +55,113 @@ def Test_Logout() :
 
 # =============================================================================
 
-def TestScript1() :
-    PrintRes(RegisterUser.__name__, RegisterUser(uname="yaobinw", pwd="password"))
-    # PrintRes(Login.__name__, Login("yaobinw", "password"))
-    # PrintRes(UnregisterUser.__name__, UnregisterUser())
-    # PrintRes(Logout.__name__, Logout())
+def Test_UpdateContactInfo() :
+    RegisterUser(uname="smith", pwd="smith")
+    RegisterUser(uname="black", pwd="black")
+
+    # Logged in
+    if True :
+        res = Login("smith", "smith")
+        response = json.loads(res)
+        session_id = response["sessionID"]
+
+        raw_data = {
+            "sessionID" : session_id,
+            "fName" : "Yaobin",
+            "lName" : "Wen",
+            "address" : "4750 Centre Ave.",
+            "city" : "Pittsburgh",
+            "state" : "PA",
+            "zip" : "15213",
+            "email" : "yaobinw@andrew.cmu.edu",
+            "uName" : "yaobinwen",
+            "pWord" : "yaobinwen",
+        }
+        print UpdateContactInfo(raw_data)
+
+        # raw_data = {
+        #     "sessionID" : session_id,
+        #     "fName" : "Yaobin",
+        #     "lName" : "Wen",
+        #     "address" : "4750 Centre Ave.",
+        #     "city" : "Pittsburgh",
+        #     "state" : "PA",
+        #     "zip" : "15213",
+        #     "email" : "yaobinw@andrew.cmu.edu",
+        #     "uName" : "black",
+        #     "pWord" : "black",
+        # }
+        # print UpdateContactInfo(raw_data)
+        #
+        # raw_data = {
+        #     "sessionID" : session_id,
+        #     "uName" : "smith",
+        #     "pWord" : "smith",
+        # }
+        # print UpdateContactInfo(raw_data)
+
+    # Not logged in
+    if True :
+        raw_data = {
+            "sessionID" : "",
+            "uName" : "black",
+            "pWord" : "black",
+        }
+        print UpdateContactInfo(raw_data)
+
+# =============================================================================
+
+def Test_ModifyProduct() :
+    # Admin
+    if True :
+        res = Login("jadmin", "admin")
+        response = json.loads(res)
+        session_id = response["sessionID"]
+        print ModifyProduct(session_id, "", "", "")
+        print ModifyProduct(session_id, "1", "", "")
+        print ModifyProduct(session_id, "1", "Mac Book Pro", "MacPro")
+        print ModifyProduct(session_id, "1", "Mac Book Pro", "")
+        print ModifyProduct(session_id, "1", "Mac Book Pro", "MacPro")
+
+# =============================================================================
+
+def Test_ViewUsers() :
+    # Admin
+    if True :
+        res = Login("jadmin", "admin")
+        response = json.loads(res)
+        session_id = response["sessionID"]
+        print session_id
+        print ViewUsers(session_id, "", "") # All users.
+        print ViewUsers(session_id, "Cai", "")  # No users
+        print ViewUsers(session_id, "Yaob", "")  # No users
+
+    # Regular user
+    if True :
+        res = Login("user2", "password2")
+        response = json.loads(res)
+        session_id = response["sessionID"]
+        print session_id
+        print ViewUsers(session_id, "", "") # All users.
+        print ViewUsers(session_id, "Cai", "")  # No users
+        print ViewUsers(session_id, "Yaob", "")  # No users
+
+    # Not logged in.
+    if True :
+        print ViewUsers("rubish", "", "") # All users.
+
+# =============================================================================
+
+def Test_ViewProducts() :
+    print ViewProduct("1", "aa", "bb")  # Return ID#1
+    print ViewProduct("40", "Computer", "MacPro")   # Nothing
+    print ViewProduct("", "Computer", "MacPro")   # MacPro
+    print ViewProduct("", "mpu", "M")   # MacPro
 
 # =============================================================================
 
 def Main( args ) :
-    # Test_Registration()
-    Test_Login()
-    Test_Logout()
+    Test_UpdateContactInfo()
 
 # =============================================================================
 

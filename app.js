@@ -163,6 +163,10 @@ function session_print() {
 // ============================================================================
 // Helper functions
 
+function sql_set_field_value(conn, field, value, sep) {
+    return (_NU(value) ? "" : ("`" + field + "`=" + conn.escape(value) + sep));
+}
+
 function get_role_menu(base_url, user_role) {
     if (user_role == "Admin") {
         return [
@@ -513,22 +517,19 @@ app.post('/logout', function(req, res) {
 // ============================================================================
 // Update Contact Information
 
-function sql_set_field_value(conn, field, value, sep) {
-    return (_NU(value) ? "" : ("`" + field + "`=" + conn.escape(value) + sep));
-}
-
-function db_update_user(conn, user_info) {
-    var failure_msg_base = "Contact info update failed: ";
-    var success_msg_base = "Your information has been updated.";
+function db_update_user(conn, user_info, res) {
+    var failure_msg_base = "There was a problem with this action";
+    var success_msg_base = "Your information has been updated";
 
     var assignments =
-        sql_set_field_value(conn, "uName", user_info.uname, ",") +
-        sql_set_field_value(conn, "pWord", user_info.pwd, "")
+        sql_set_field_value(conn, "Name", user_info.uname, ",") +
+        sql_set_field_value(conn, "Password", user_info.pwd, "")
         ;
 
     if (assignments != "") {
         // Only update the User table when there is something to update.
-        var sql_stmt = "UPDATE `User` SET "+ assignments + " WHERE `ID`=" + user_info.id;
+        var sql_stmt = "UPDATE `User` SET "+ assignments +
+            " WHERE `ID`=" + conn.escape(user_info.id);
         conn.query(sql_stmt, function(err, result) {    // func_02
             if (err) {
                 return res.json(ret_value(
@@ -549,10 +550,13 @@ function db_update_user(conn, user_info) {
 }
 
 app.post('/updateInfo', function(req, res) {
-    var failure_msg_base = "Contact info update failed: ";
-    var success_msg_base = "Your information has been updated.";
+    var failure_msg_base = "There was a problem with this action";
+    var success_msg_base = "Your information has been updated";
 
-    if (!req.isAuthenticated()) {
+    var session_info = session_find(emptize(req.body.sessionID));
+
+    // Authenticate the user
+    if (_NU(session_info)) {
         return res.json(ret_value(
             failure_msg_base,
             "Not authenticated.",
@@ -562,7 +566,7 @@ app.post('/updateInfo', function(req, res) {
     }
 
     var user_info = {
-        id : req.user.id,
+        id : session_info.uid,
         fname : req.body.fName,
         lname : req.body.lName,
         addr : req.body.address,
@@ -633,7 +637,8 @@ app.post('/updateInfo', function(req, res) {
 
         if (assignments != "") {
             // Only update the UserContact table when there is something to update.
-            var sql_stmt = "UPDATE `UserContact` SET "+ assignments + " WHERE `ID`=" + user_info.id;
+            var sql_stmt = "UPDATE `UserContact` SET "+ assignments +
+                " WHERE `UserID`=" + conn.escape(user_info.id);
             conn.query(sql_stmt, function(err, result) {    // func_02
                 if (err) {
                     return res.json(ret_value(
@@ -644,13 +649,13 @@ app.post('/updateInfo', function(req, res) {
                     ));    // Return
                 } else {
                     // Update the User table.
-                    return db_update_user(conn, user_info);
+                    return db_update_user(conn, user_info, res);
                 }
             }); // func_02
         } else {
             // If there is nothing to update to the UserContact table,
             // then only update the User table.
-            return db_update_user(conn, user_info);
+            return db_update_user(conn, user_info, res);
         }
     }); // func_01
 });
