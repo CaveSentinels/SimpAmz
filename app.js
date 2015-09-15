@@ -167,17 +167,17 @@ function sql_set_field_value(conn, field, value, sep) {
     return (_NU(value) ? "" : ("`" + field + "`=" + conn.escape(value) + sep));
 }
 
-function get_role_menu(base_url, user_role) {
+function get_role_menu(url, user_role) {
     if (user_role == "Admin") {
         return [
-            base_url + "/" + "modifyProduct",
-            base_url + "/" + "viewUsers",
-            base_url + "/" + "getProducts"
+            url + "/" + "modifyProduct",
+            url + "/" + "viewUsers",
+            url + "/" + "getProducts"
         ];
     } else if (user_role == "Customer") {
         return [
-            base_url + "/" + "updateInfo",
-            base_url + "/" + "getProducts"
+            url + "/" + "updateInfo",
+            url + "/" + "getProducts"
         ];
     }
 
@@ -467,7 +467,10 @@ app.post('/login', function(req, res) {
                 var session_info = session_create(rows[0].ID, rows[0].Role);
                 session_save(session_info);
                 // Return the allowed menu items.
-                var menu_list = get_role_menu(req.baseUrl, rows[0].Role);
+                var menu_list = get_role_menu(
+                    req.hostname + req.baseUrl,
+                    rows[0].Role
+                );
                 // Respond.
                 var ret = ret_value(
                     success_msg_base,
