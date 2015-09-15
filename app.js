@@ -412,6 +412,7 @@ app.post('/login', function(req, res) {
                 "Database connection error: " + err,
                 "E_POST_LOGIN_01", null
             );
+            ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
             ret["sessionID"] = "";
             return res.json(ret);
@@ -430,6 +431,7 @@ app.post('/login', function(req, res) {
                     "E_POST_LOGIN_02",
                     sql_stmt
                 );
+                ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 ret["sessionID"] = "";
                 return res.json(ret);
@@ -442,6 +444,7 @@ app.post('/login', function(req, res) {
                     "E_POST_LOGIN_03",
                     _Q(rows.length) + " users."
                 );
+                ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 ret["sessionID"] = "";
                 return res.json(ret);
@@ -453,6 +456,7 @@ app.post('/login', function(req, res) {
                     "Incorrect user name or password.",
                     "E_POST_LOGIN_04", null
                 );
+                ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 ret["sessionID"] = "";
                 return res.json(ret);
@@ -469,6 +473,7 @@ app.post('/login', function(req, res) {
                     success_msg_base,
                     null, null, null
                 );
+                ret["err_message"] = "";
                 ret["menu"] = menu_list;
                 ret["sessionID"] = session_info.sid;
                 return res.json(ret);
@@ -481,6 +486,7 @@ app.post('/login', function(req, res) {
                 "Database connection error: " + err,
                 "E_POST_LOGIN_05", null
             );
+            ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
             ret["sessionID"] = "";
             return res.json(ret);
