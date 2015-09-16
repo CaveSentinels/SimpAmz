@@ -39,6 +39,9 @@ var email_pattern = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-
 
 // ============================================================================
 
+// The time that a session will timeout.
+var SESSION_TIMEOUT = 15 * 60 * 1000;
+
 var USER_ROLE_CUSTOMER = "Customer";
 var USER_ROLE_ADMIN = "Admin";
 
@@ -101,7 +104,8 @@ function session_create(user_id, user_role) {
     return {
         sid : user_id + "_" + curr_date_time_value,     // session ID
         uid : user_id,         // user ID
-        role : user_role      // user's role
+        role : user_role,      // user's role
+        last_login : curr_date_time_value   // The time the user last logged in
     };
 }
 
@@ -138,6 +142,30 @@ function session_in(sessionID) {
     return false;   // The session is not found.
 }
 
+function session_expired(sessionID) {
+    var index;
+    for (index = 0; index < g_sessions.length; index++) {
+        var s = g_sessions[index];
+        if (!_NU(s) && s.sid == sessionID) {
+            var curr_date_time_value = new Date().valueOf();
+            var ms_diff = curr_date_time_value - s.last_login;
+            return (ms_diff > SESSION_TIMEOUT);
+        }
+    }
+
+    return true;
+}
+
+function session_update_login_time(sessionID) {
+    var index;
+    for (index = 0; index < g_sessions.length; index++) {
+        var s = g_sessions[index];
+        if (!_NU(s) && s.sid == sessionID) {
+            s.last_login = new Date().valueOf();
+        }
+    }
+}
+
 function session_delete(sessionID) {
     var index;
     for (index = 0; index < g_sessions.length; index++) {
@@ -158,6 +186,26 @@ function session_print() {
             console.log("Session { \n" + "\tSID: " + s.sid + "\n" + "\tUID: " + s.uid + "\n" + "\tRole: " + s.role + "\n}\n");
         }
     }
+}
+
+function user_authenticated(sessionID) {
+    var sid = emptize(sessionID);
+
+    if (!session_in(sid)) {
+        // Session is not found so the user is not authenticated.
+        return false;
+    }
+
+    if (session_expired(sid)) {
+        // If the session has expired, delete it.
+        session_delete(sid);
+        return false;
+    }
+
+    // If the session can be found and has not expired, update the last
+    // login time and return true.
+    session_update_login_time(sid);
+    return true;
 }
 
 // ============================================================================
@@ -361,7 +409,8 @@ app.post('/unregisterUser', function(req, res) {
     var failure_msg_base = "Account unregistration failed: ";
 
     // The user must be authenticated in order to unregister the account.
-    if (!req.isAuthenticated()) {
+    var sessionID = emptize(req.body.sessionID);
+    if (!user_authenticated(sessionID)) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "User must log in before unregistering the account.",
@@ -581,10 +630,9 @@ app.post('/updateInfo', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
     var success_msg_base = "Your information has been updated";
 
-    var session_info = session_find(emptize(req.body.sessionID));
-
     // Authenticate the user
-    if (_NU(session_info)) {
+    var sessionID = emptize(req.body.sessionID);
+    if (!user_authenticated(sessionID)) {
         return res.json(ret_value(
             failure_msg_base,
             "Not authenticated.",
@@ -592,6 +640,8 @@ app.post('/updateInfo', function(req, res) {
             null
         ));
     }
+
+    var session_info = session_find(sessionID);
 
     var user_info = {
         id : session_info.uid,
@@ -695,10 +745,9 @@ app.post('/modifyProduct', function(req, res) {
     var success_msg_base = "The product information has been updated";
     var failure_msg_base = "There was a problem with this action";
 
-    var session_info = session_find(emptize(req.body.sessionID));
-
     // Authenticate the user
-    if (_NU(session_info)) {
+    var sessionID = emptize(req.body.sessionID);
+    if (!user_authenticated(sessionID)) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "User must log in to modify the product information.",
@@ -707,6 +756,7 @@ app.post('/modifyProduct', function(req, res) {
     }
 
     // Check if the user is an admin.
+    var session_info = session_find(emptize(sessionID));
     if (session_info.role != USER_ROLE_ADMIN) {
         return res.json(ret_value(
             failure_msg_base,
@@ -780,10 +830,9 @@ app.post('/modifyProduct', function(req, res) {
 app.get('/viewUsers', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
 
-    var session_info = session_find(emptize(req.query.sessionID));
-
     // Authenticate the user
-    if (_NU(session_info)) {
+    var sessionID = emptize(req.query.sessionID);
+    if (!user_authenticated(sessionID)) {
         return res.json(ret_value(
             failure_msg_base,
             ERR_MSG_AUTH_FAILURE + "User must log in to view the users' information.",
@@ -792,6 +841,7 @@ app.get('/viewUsers', function(req, res) {
     }
 
     // Check if the user is an admin.
+    var session_info = session_find(emptize(req.query.sessionID));
     if (session_info.role != USER_ROLE_ADMIN) {
         return res.json(ret_value(
             failure_msg_base,
