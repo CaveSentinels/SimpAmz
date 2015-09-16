@@ -202,6 +202,7 @@ app.post("/registerUser", function(req, res) {
     var email = req.body.email;
     var uname = req.body.uName;
     var pwd = req.body.pWord;
+    var role = req.body.role;
 
     // Validate parameter: state
     if (state) {
@@ -260,6 +261,13 @@ app.post("/registerUser", function(req, res) {
         ));    // Return
     }
 
+    // Validate parameter: Role is a secret parameter. If it is correctly
+    // assigned a value, then we use the value to assign the role.
+    // Otherwise we treat it as "Customer".
+    if ((!role) || (role != USER_ROLE_ADMIN && role != USER_ROLE_CUSTOMER)) {
+        role = USER_ROLE_CUSTOMER;
+    }
+
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
             return res.json(ret_value(
@@ -292,7 +300,7 @@ app.post("/registerUser", function(req, res) {
             // Now we know that the uname doesn't exist. We can create
             // the user account.
             sql_stmt = "INSERT INTO User (Name, Password, Role) VALUES (" +
-                _Q(uname) + ", " + _Q(pwd) + ", 'Customer')";
+                _Q(uname) + ", " + _Q(pwd) + ", " + _Q(role) + ")";
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
                     return res.json(ret_value(
