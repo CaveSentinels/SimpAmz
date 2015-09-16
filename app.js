@@ -185,6 +185,17 @@ function get_role_menu(url, user_role) {
 }
 
 // ============================================================================
+// Index page
+
+app.get("/index", function(req, res) {
+    res.render('index', {
+        title: 'SimpAmz',
+        full_title: 'SIMPlified AMaZon',
+        error: ''
+    });
+});
+
+// ============================================================================
 // Register new user as Customer.
 
 app.post("/registerUser", function(req, res) {
