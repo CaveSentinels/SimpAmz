@@ -57,9 +57,12 @@ CREATE TABLE `Product` (
 # ================================================================================
 # Insert initial data.
 
--- INSERT INTO User (Name, Password, Role) VALUES ('hsmith', 'smith', 'Customer');
--- INSERT INTO User (Name, Password, Role) VALUES ('tbucktoo', 'bucktoo', 'Customer');
-INSERT INTO User (Name, Password, Role) VALUES ('jadmin', 'admin', 'Admin');
+INSERT INTO User (ID, Name, Password, Role) VALUES (1, 'jadmin', 'admin', 'Admin');
+INSERT INTO User (ID, Name, Password, Role) VALUES (2, 'hsmith', 'smith', 'Customer');
+INSERT INTO User (ID, Name, Password, Role) VALUES (3, 'tbucktoo', 'bucktoo', 'Customer');
+INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VALUES ("", "", "", "", "", "", "", 1);
+INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VALUES ("", "", "", "", "", "", "", 2);
+INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VALUES ("", "", "", "", "", "", "", 3);
 
 
 INSERT INTO `Product` (`ID`, `Description`, `Category`, `Title`) VALUES (1, "", "|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Christianity[12290]|Clergy[12360]|Preaching[12368];|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Christianity[12290]|Clergy[12360]|Sermons[12370];", "Patterns of Preaching: A Sermon Sampler");
