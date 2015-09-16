@@ -64,6 +64,9 @@ INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VA
 INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VALUES ("", "", "", "", "", "", "", 2);
 INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VALUES ("", "", "", "", "", "", "", 3);
 
+INSERT INTO Product (ID, Description, Category, Title) VALUES (-1, "Mac Book Pro", "Computer", "MacPro");
+INSERT INTO Product (ID, Description, Category, Title) VALUES (-2, "Robin's coffee cup", "Appliance", "Cup");
+INSERT INTO Product (ID, Description, Category, Title) VALUES (-3, "Diet Coke bottle", "Trash", "Bottle");
 
 INSERT INTO `Product` (`ID`, `Description`, `Category`, `Title`) VALUES (1, "", "|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Christianity[12290]|Clergy[12360]|Preaching[12368];|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Christianity[12290]|Clergy[12360]|Sermons[12370];", "Patterns of Preaching: A Sermon Sampler");
 INSERT INTO `Product` (`ID`, `Description`, `Category`, `Title`) VALUES (2, "", "|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Earth-Based Religions[12472]|Wicca[12484];|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Earth-Based Religions[12472]|Witchcraft[12486];", "Candlemas: Feast of Flames");
