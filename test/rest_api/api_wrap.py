@@ -8,7 +8,7 @@ http_request_local_base = "http://localhost:3000"
 
 # =============================================================================
 
-def RegisterUser(uname, pwd, fname="", lname="", addr="", city="", state="", zip="", email="") :
+def RegisterUser(uname, pwd, role="", fname="", lname="", addr="", city="", state="", zip="", email="") :
     raw_data = {
         'fName' : fname,
         'lName' : lname,
@@ -18,7 +18,8 @@ def RegisterUser(uname, pwd, fname="", lname="", addr="", city="", state="", zip
         'zip' : zip,
         'email' : email,
         'uName' : uname,
-        'pWord' : pwd
+        'pWord' : pwd,
+        'role' : role
     }
     data = urllib.urlencode(raw_data)
     req = urllib2.Request(http_request_local_base + "/registerUser", data)

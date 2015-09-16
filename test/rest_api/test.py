@@ -37,6 +37,10 @@ def Test_Registration() :
                                                  fname="Yaobin", lname="Wen",
                                                  addr="4750 Centre Ave.", city="Pittsburgh", state="PA", zip="12345",
                                                  email="user1@simpamz.com"))
+    PrintRes(RegisterUser.__name__, RegisterUser(uname="yaobin", pwd="yaobin", role="Admin",
+                                                 fname="Yaobin", lname="Wen",
+                                                 addr="4750 Centre Ave.", city="Pittsburgh", state="PA", zip="12345",
+                                                 email="yaobin@simpamz.com"))
 
 # =============================================================================
 
@@ -126,17 +130,17 @@ def Test_ModifyProduct() :
 # =============================================================================
 
 def Test_ViewUsers() :
-    # Admin
+    print "Admin views users"
     if True :
-        res = Login("jadmin", "admin")
+        res = Login("yaobin", "yaobin")
         response = json.loads(res)
         session_id = response["sessionID"]
         print session_id
         print ViewUsers(session_id, "", "") # All users.
         print ViewUsers(session_id, "Cai", "")  # No users
-        print ViewUsers(session_id, "Yaob", "")  # No users
+        print ViewUsers(session_id, "Yaob", "")  # 2 users
 
-    # Regular user
+    print "Customer views users"
     if True :
         res = Login("user2", "password2")
         response = json.loads(res)
@@ -146,7 +150,7 @@ def Test_ViewUsers() :
         print ViewUsers(session_id, "Cai", "")  # No users
         print ViewUsers(session_id, "Yaob", "")  # No users
 
-    # Not logged in.
+    print "Not logged in"
     if True :
         print ViewUsers("rubish", "", "") # All users.
 
@@ -161,7 +165,7 @@ def Test_ViewProducts() :
 # =============================================================================
 
 def Main( args ) :
-    Test_UpdateContactInfo()
+    Test_ViewUsers()
 
 # =============================================================================
 
