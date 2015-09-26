@@ -4,8 +4,8 @@ import urllib2
 
 # =============================================================================
 
-http_request_local_base = "http://ec2-54-165-242-22.compute-1.amazonaws.com:3000"
-# http_request_local_base = "http://localhost:3000"
+# http_request_local_base = "http://ec2-54-165-242-22.compute-1.amazonaws.com:3000"
+http_request_local_base = "http://localhost:3000"
 
 # =============================================================================
 
@@ -103,6 +103,14 @@ def ViewUsers(session_id, fName="", lName="") :
 def ViewProduct(id="", category="", keyword="") :
     query_str = "?productId=" + id + "&category=" + category +"&keyword=" + keyword
     req = urllib2.Request(http_request_local_base + "/getProducts" + query_str)
+    res = urllib2.urlopen(req)
+
+    return res.read()
+
+# =============================================================================
+
+def Sandbox() :
+    req = urllib2.Request(http_request_local_base + "/sandbox")
     res = urllib2.urlopen(req)
 
     return res.read()

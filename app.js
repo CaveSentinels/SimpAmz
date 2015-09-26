@@ -953,6 +953,23 @@ app.get('/getProducts', function(req, res) {
 });
 
 // ============================================================================
+// Sandbox: A place to test or experiment various capabilities.
+
+app.get('/sandbox', function(req, res) {
+
+    // Print the HTTP headers
+    console.log("==============================");
+    console.log("Header:");
+    var hd = req["headers"];
+    for (var key in hd) {
+        console.log(key + " : " + hd[key]);
+    }
+    console.log("==============================");
+
+    res.json(req["headers"]);
+});
+
+// ============================================================================
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
