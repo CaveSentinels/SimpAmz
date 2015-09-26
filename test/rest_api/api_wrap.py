@@ -4,7 +4,8 @@ import urllib2
 
 # =============================================================================
 
-http_request_local_base = "http://localhost:3000"
+http_request_local_base = "http://ec2-54-165-242-22.compute-1.amazonaws.com:3000"
+# http_request_local_base = "http://localhost:3000"
 
 # =============================================================================
 

@@ -122,19 +122,20 @@ def Test_ModifyProduct() :
         response = json.loads(res)
         session_id = response["sessionID"]
         print ModifyProduct(session_id, "", "", "")
-        print ModifyProduct(session_id, "1", "", "")
-        print ModifyProduct(session_id, "1", "Mac Book Pro", "MacPro")
-        print ModifyProduct(session_id, "1", "Mac Book Pro", "")
-        print ModifyProduct(session_id, "1", "Mac Book Pro", "MacPro")
+        print ModifyProduct(session_id, "-1", "", "")
+        print ModifyProduct(session_id, "-1", "Mac Book Pro", "MacPro")
+        print ModifyProduct(session_id, "-1", "Mac Book Pro", "")
+        print ModifyProduct(session_id, "-1", "Mac Book Pro", "MacPro")
 
 # =============================================================================
 
 def Test_ViewUsers() :
     print "Admin views users"
     if True :
-        res = Login("yaobin", "yaobin")
+        res = Login("jadmin", "admin")
         response = json.loads(res)
         session_id = response["sessionID"]
+        # session_id = "1_1442416033613"
         print session_id
         print ViewUsers(session_id, "", "") # All users.
         print ViewUsers(session_id, "Cai", "")  # No users
@@ -161,6 +162,7 @@ def Test_ViewProducts() :
     print ViewProduct("40", "Computer", "MacPro")   # Nothing
     print ViewProduct("", "Computer", "MacPro")   # MacPro
     print ViewProduct("", "mpu", "M")   # MacPro
+    print ViewProduct("", "", "")
 
 # =============================================================================
 
