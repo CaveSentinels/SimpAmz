@@ -252,15 +252,15 @@ app.post("/registerUser", function(req, res) {
     var failure_msg_base = "there was a problem with your registration";
 
     // Get the registration parameters.
-    var fname = req.body.fName;
-    var lname = req.body.lName;
+    var fname = req.body.fname;
+    var lname = req.body.lname;
     var addr = req.body.address;
     var city = req.body.city;
     var state = req.body.state;
     var zip = req.body.zip;
     var email = req.body.email;
-    var uname = req.body.uName;
-    var pwd = req.body.pWord;
+    var uname = req.body.username;
+    var pwd = req.body.password;
     var role = req.body.role;
 
     // Validate parameter: state
@@ -403,6 +403,7 @@ app.post("/registerUser", function(req, res) {
 
 // ============================================================================
 // Unregister an existing user.
+// NOTE: The "unregisterUser" has not been tested.
 
 app.post('/unregisterUser', function(req, res) {
     var success_msg_base = "Your account has been unregistered.";
@@ -645,15 +646,15 @@ app.post('/updateInfo', function(req, res) {
 
     var user_info = {
         id : session_info.uid,
-        fname : req.body.fName,
-        lname : req.body.lName,
+        fname : req.body.fname,
+        lname : req.body.lname,
         addr : req.body.address,
         city : req.body.city,
         state : req.body.state,
         zip : req.body.zip,
         email : req.body.email,
-        uname : req.body.uName,
-        pwd : req.body.pWord
+        uname : req.body.username,
+        pwd : req.body.password
     };
 
     // Validate parameter: state
@@ -850,8 +851,8 @@ app.get('/viewUsers', function(req, res) {
         ));
     }
 
-    var fname = emptize(req.query.fName);
-    var lname = emptize(req.query.lName);
+    var fname = emptize(req.query.fname);
+    var lname = emptize(req.query.lname);
 
     // Find the user information from the database.
     pool.getConnection(function(err, conn) {    // func_01
