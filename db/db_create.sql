@@ -33,15 +33,12 @@ CREATE TABLE `UserContact` (
 
 
 CREATE TABLE `Session` (
-  `ID` int(11) NOT NULL AUTO_INCREMENT,
-  `UserID` int(11) DEFAULT NULL,
-  `SHA1` varchar(32) DEFAULT NULL,
-  `LastLogin` datetime NOT NULL,
-  PRIMARY KEY (`ID`),
-  UNIQUE KEY `SHA1_UNIQUE` (`SHA1`),
+  `SessionID` varchar(50) NOT NULL,
+  `UserID` int(11) NOT NULL,
+  `LastLogin` bigint(20) NOT NULL,
+  PRIMARY KEY (`SessionID`),
   KEY `UserRef_idx` (`UserID`),
-  KEY `UserRef_Session_idx` (`UserID`),
-  CONSTRAINT `UserRef_Session` FOREIGN KEY (`UserID`) REFERENCES `User` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION
+  KEY `UserRef_Session_idx` (`UserID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
@@ -191,4 +188,13 @@ FROM User
 INNER JOIN UserContact 
 ON User.ID = UserContact.UserID
 WHERE UserContact.FName LIKE "%o%" OR UserContact.LName LIKE "%x%"
+;
+
+# ----------
+INSERT INTO Session (SessionID, UserID, LastLogin) VALUES ("1_1442416033613", 1, 1442416033613);
+
+SELECT `User`.`ID`, `User`.`Role`, Session.LastLogin FROM `User`
+INNER JOIN `Session`
+ON `User`.`ID` = `Session`.`UserID`
+WHERE `Session`.`SessionID` = "1_1442416033613"
 ;

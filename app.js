@@ -178,6 +178,7 @@ function session_delete(sessionID) {
     return false;   // The session is not found.
 }
 
+// TODO: Delete later.
 function session_print() {
     var index;
     for (index = 0; index < g_sessions.length; index++) {
@@ -534,20 +535,48 @@ app.post('/login', function(req, res) {
             if (rows.length == 1) {
                 // User authentication succeeded. Create a session for him/her.
                 var session_info = session_create(rows[0].ID, rows[0].Role);
-                session_save(session_info);
-                // Return the allowed menu items.
-                var menu_list = get_role_menu(
-                    req.hostname + req.baseUrl,
-                    rows[0].Role
-                );
-                // Respond.
+
+                // Now save the session info into database.
+                sql_stmt = "INSERT INTO Session (SessionID, UserID, LastLogin) VALUES (" +
+                    _Q(session_info.sid) + ", " + _Q(session_info.uid) + ", " + _Q(session_info.LastLogin) + ")";
+
+                conn.query(sql_stmt, function(err, result) {    // func_03
+                    if (err) {
+                        return res.json(ret_value(
+                            failure_msg_base,
+                            "Database INSERT INTO error: " + err,
+                            "E_POST_LOGIN_05",
+                            sql_stmt
+                        ));    // Return
+                    } else {
+                        // OK. Finally we've done everything.
+                        // Return success.
+                        // Return the allowed menu items.
+                        var menu_list = get_role_menu(
+                            req.hostname + req.baseUrl,
+                            rows[0].Role
+                        );
+                        // Respond.
+                        var ret = ret_value(
+                            success_msg_base,
+                            null, null, null
+                        );
+                        ret["err_message"] = "";
+                        ret["menu"] = menu_list;
+                        ret["sessionID"] = session_info.sid;
+                        return res.json(ret);
+                    }
+                }); // func_03
+            } else {
+                // Either we found no record(which means the user or password don't match)
+                // or we found multiple records which is a weird case.
                 var ret = ret_value(
-                    success_msg_base,
-                    null, null, null
+                    failure_msg_base,
+                    null, "E_POST_LOGIN_06", null
                 );
-                ret["err_message"] = "";
-                ret["menu"] = menu_list;
-                ret["sessionID"] = session_info.sid;
+                ret["err_message"] = failure_msg_base;
+                ret["menu"] = [];
+                ret["sessionID"] = "";
                 return res.json(ret);
             }
         }); // Func_02
@@ -576,20 +605,53 @@ app.post('/logout', function(req, res) {
 
     var sessionID = emptize(req.body.sessionID);
 
-    if (session_in(sessionID)) {
-        // If the user has logged in before, we then log him/her out.
-        session_delete(sessionID);
-        return res.json(ret_value(
-            success_msg_base,
-            null, null, null
-        ));
-    } else {
-        // If the user has not logged in before, we tell him/her.
-        return res.json(ret_value(
-            failure_msg_base,
-            null, null, null
-        ));
-    }
+    // Try to delete the session directly.
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.json(ret_value(
+                "Database connection error: ",
+                err, "E_POST_LOGOUT_01", null
+            ));    // Return
+        }
+
+        var sql_stmt = "DELETE FROM `Session` WHERE `SessionID`=" + _Q(sessionID);
+        conn.query(sql_stmt, function(err, result) {    // func_02
+            if (err) {
+                return res.json(ret_value(
+                    "Database DELETE error: ",
+                    err, "E_POST_LOGOUT_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (result.affectedRows == 0) {
+                    // If the number of affected rows is 0, that means this
+                    // session didn't exist before.
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        null, "E_POST_LOGOUT_03",
+                        null
+                    ));    // Return
+                } else if (result.affectedRows > 1) {
+                    // This should never happen because the session ID
+                    // is guaranteed to be unique in the database.
+                    // However, in case this really happens, let's just assume
+                    // the user logs out successfully.
+                    // But because this is an abnormal case, we still give the
+                    // error point value.
+                    return res.json(ret_value(
+                        success_msg_base,
+                        null, "E_POST_LOGOUT_04", null
+                    ));
+                } else {
+                    // Successful logout.
+                    return res.json(ret_value(
+                        success_msg_base,
+                        null, null, null
+                    ));
+                }
+            }
+        }); // func_02
+    }); // func_01
 });
 
 // ============================================================================
@@ -633,109 +695,142 @@ app.post('/updateInfo', function(req, res) {
 
     // Authenticate the user
     var sessionID = emptize(req.body.sessionID);
-    if (!user_authenticated(sessionID)) {
-        return res.json(ret_value(
-            failure_msg_base,
-            "Not authenticated.",
-            "E_POST_UPDATE_INFO_01",
-            null
-        ));
-    }
 
-    var session_info = session_find(sessionID);
-
-    var user_info = {
-        id : session_info.uid,
-        fname : req.body.fname,
-        lname : req.body.lname,
-        addr : req.body.address,
-        city : req.body.city,
-        state : req.body.state,
-        zip : req.body.zip,
-        email : req.body.email,
-        uname : req.body.username,
-        pwd : req.body.password
-    };
-
-    // Validate parameter: state
-    if (user_info.state) {
-        if (valid_state_abbr.indexOf(user_info.state.toUpperCase()) == -1) {
-            // Meaning that state's value is not a valid state abbreviation.
-            return res.json(ret_value(
-                failure_msg_base,
-                "Invalid state abbreviation: " + user_info.state,
-                "E_POST_UPDATE_INFO_02", null
-            )); // Return
-        }
-    }
-
-    // Validate parameter: zip code.
-    if (user_info.zip) {
-        if (!zip_code_pattern.test(user_info.zip)) {
-            // Meaning that zip's value is not a 5-digit zip code.
-            return res.json(ret_value(
-                failure_msg_base,
-                "Invalid zip code: " + user_info.zip,
-                "E_POST_UPDATE_INFO_03", null
-            ));    // Return
-        }
-    }
-
-    // Validate parameter: email format.
-    // We assume that if the format is correct, the email is valid.
-    if (user_info.email) {
-        if (!email_pattern.test(user_info.email)) {
-            // Meaning that email's value is not a valid email address.
-            return res.json(ret_value(
-                failure_msg_base,
-                "Invalid email format: " + user_info.email,
-                "E_POST_UPDATE_INFO_04", null
-            ));    // Return
-        }
-    }
-
-    // Update the database.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
             return res.json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
-                "E_POST_UPDATE_INFO_05", null
+                "E_POST_UPDATE_INFO_01", null
             ));    // Return
         }
 
-        // Create the value assignments in the SET part.
-        var assignments = sql_set_field_value(conn, "fName", user_info.fname, ",") +
-            sql_set_field_value(conn, "lName", user_info.lname, ",") +
-            sql_set_field_value(conn, "addr", user_info.addr, ",") +
-            sql_set_field_value(conn, "city", user_info.city, ",") +
-            sql_set_field_value(conn, "state", user_info.state, ",") +
-            sql_set_field_value(conn, "zip", user_info.zip, ",") +
-            sql_set_field_value(conn, "email", user_info.email, "")
-            ;
-
-        if (assignments != "") {
-            // Only update the UserContact table when there is something to update.
-            var sql_stmt = "UPDATE `UserContact` SET "+ assignments +
-                " WHERE `UserID`=" + conn.escape(user_info.id);
-            conn.query(sql_stmt, function(err, result) {    // func_02
-                if (err) {
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User" +
+                       "INNER JOIN Session" +
+                       "ON User.ID = Session.UserID" +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
+            if (err) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    "Database SELECT error: " + err,
+                    "E_POST_UPDATE_INFO_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    // Not authenticated
                     return res.json(ret_value(
                         failure_msg_base,
-                        "Database UPDATE error: " + err,
-                        "E_POST_UPDATE_INFO_06",
-                        sql_stmt
-                    ));    // Return
+                        "Not authenticated.",
+                        "E_POST_UPDATE_INFO_03",
+                        null
+                    ));
                 } else {
-                    // Update the User table.
-                    return db_update_user(conn, user_info, res);
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
                 }
-            }); // func_02
-        } else {
-            // If there is nothing to update to the UserContact table,
-            // then only update the User table.
-            return db_update_user(conn, user_info, res);
-        }
+            }
+
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            // OK. Now the user is an authenticated one.
+            // We can go on and try to update the user's information.
+
+            var user_info = {
+                id : session_info.uid,
+                fname : req.body.fname,
+                lname : req.body.lname,
+                addr : req.body.address,
+                city : req.body.city,
+                state : req.body.state,
+                zip : req.body.zip,
+                email : req.body.email,
+                uname : req.body.username,
+                pwd : req.body.password
+            };
+
+            // Validate parameter: state
+            if (user_info.state) {
+                if (valid_state_abbr.indexOf(user_info.state.toUpperCase()) == -1) {
+                    // Meaning that state's value is not a valid state abbreviation.
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Invalid state abbreviation: " + user_info.state,
+                        "E_POST_UPDATE_INFO_02", null
+                    )); // Return
+                }
+            }
+
+            // Validate parameter: zip code.
+            if (user_info.zip) {
+                if (!zip_code_pattern.test(user_info.zip)) {
+                    // Meaning that zip's value is not a 5-digit zip code.
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Invalid zip code: " + user_info.zip,
+                        "E_POST_UPDATE_INFO_03", null
+                    ));    // Return
+                }
+            }
+
+            // Validate parameter: email format.
+            // We assume that if the format is correct, the email is valid.
+            if (user_info.email) {
+                if (!email_pattern.test(user_info.email)) {
+                    // Meaning that email's value is not a valid email address.
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Invalid email format: " + user_info.email,
+                        "E_POST_UPDATE_INFO_04", null
+                    ));    // Return
+                }
+            }
+
+            // Create the value assignments in the SET part.
+            var assignments = sql_set_field_value(conn, "fName", user_info.fname, ",") +
+                sql_set_field_value(conn, "lName", user_info.lname, ",") +
+                sql_set_field_value(conn, "addr", user_info.addr, ",") +
+                sql_set_field_value(conn, "city", user_info.city, ",") +
+                sql_set_field_value(conn, "state", user_info.state, ",") +
+                sql_set_field_value(conn, "zip", user_info.zip, ",") +
+                sql_set_field_value(conn, "email", user_info.email, "")
+                ;
+
+            if (assignments != "") {
+                // Only update the UserContact table when there is something to update.
+                sql_stmt = "UPDATE `UserContact` SET "+ assignments +
+                    " WHERE `UserID`=" + conn.escape(user_info.id);
+                conn.query(sql_stmt, function(err, result) {    // func_03
+                    if (err) {
+                        return res.json(ret_value(
+                            failure_msg_base,
+                            "Database UPDATE error: " + err,
+                            "E_POST_UPDATE_INFO_06",
+                            sql_stmt
+                        ));    // Return
+                    } else {
+                        // Update the User table.
+                        return db_update_user(conn, user_info, res);
+                    }
+                }); // func_03
+            } else {
+                // If there is nothing to update to the UserContact table,
+                // then only update the User table.
+                return db_update_user(conn, user_info, res);
+            }
+        }); // func_02
     }); // func_01
 });
 
@@ -748,79 +843,109 @@ app.post('/modifyProduct', function(req, res) {
 
     // Authenticate the user
     var sessionID = emptize(req.body.sessionID);
-    if (!user_authenticated(sessionID)) {
-        return res.json(ret_value(
-            failure_msg_base,
-            ERR_MSG_AUTH_FAILURE + "User must log in to modify the product information.",
-            "E_POST_MODIFY_PROD_01", null
-        ));
-    }
 
-    // Check if the user is an admin.
-    var session_info = session_find(emptize(sessionID));
-    if (session_info.role != USER_ROLE_ADMIN) {
-        return res.json(ret_value(
-            failure_msg_base,
-            ERR_MSG_AUTH_FAILURE + "Only admin can modify product information.",
-            "E_POST_MODIFY_PROD_02", null
-        ));
-    }
-
-    var prod_info = {
-        id : req.body.productId,
-        description : req.body.productDescription,
-        title : req.body.productTitle
-    };
-
-    // ID must be provided.
-    if (_NUE(prod_info.id)) {
-        return res.json(ret_value(
-            failure_msg_base,
-            ERR_MSG_PARAM + "productId must not be empty.",
-            "E_POST_MODIFY_PROD_05", null
-        ));
-    }
-
-    // Update the product info in database.
-    // Update the database.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
             return res.json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
-                "E_POST_MODIFY_PROD_03", null
+                "E_POST_MODIFY_PROD_01", null
             ));    // Return
         }
 
-        // Only update when there is something to update.
-        if (_NU(prod_info.description) && _NU(prod_info.title)) {
-            return res.json(ret_value(
-                success_msg_base,
-                null, null, null
-            ));
-        }
-
-        var sql_stmt = "UPDATE `Product` SET " +
-            sql_set_field_value(conn, "Description", prod_info.description, ",") +
-            sql_set_field_value(conn, "Title", prod_info.title, "") +
-            " WHERE `ID`=" + prod_info.id;
-            ;
-
-        conn.query(sql_stmt, function(err, result) {    // func_02
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User" +
+                       "INNER JOIN Session" +
+                       "ON User.ID = Session.UserID" +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 return res.json(ret_value(
                     failure_msg_base,
-                    "Database UPDATE error: " + err,
-                    "E_POST_MODIFY_PROD_04",
+                    "Database SELECT error: " + err,
+                    "E_POST_MODIFY_PROD_02",
                     sql_stmt
                 ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    // Not authenticated
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Not authenticated.",
+                        "E_POST_MODIFY_PROD_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
             }
 
-            // Product info update succeeded.
-            return res.json(ret_value(
-                success_msg_base,
-                null, null, null
-            ));
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            if (session_info.role != USER_ROLE_ADMIN) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_AUTH_FAILURE + "Only admin can modify product information.",
+                    "E_POST_MODIFY_PROD_04", null
+                ));
+            }
+
+            var prod_info = {
+                id : req.body.productId,
+                description : req.body.productDescription,
+                title : req.body.productTitle
+            };
+
+            // ID must be provided.
+            if (_NUE(prod_info.id)) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_PARAM + "productId must not be empty.",
+                    "E_POST_MODIFY_PROD_05", null
+                ));
+            }
+
+            // Only update when there is something to update.
+            if (_NU(prod_info.description) && _NU(prod_info.title)) {
+                return res.json(ret_value(
+                    success_msg_base,
+                    null, null, null
+                ));
+            }
+
+            var sql_stmt = "UPDATE `Product` SET " +
+                sql_set_field_value(conn, "Description", prod_info.description, ",") +
+                sql_set_field_value(conn, "Title", prod_info.title, "") +
+                " WHERE `ID`=" + prod_info.id;
+                ;
+
+            conn.query(sql_stmt, function(err, result) {    // func_03
+                if (err) {
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Database UPDATE error: " + err,
+                        "E_POST_MODIFY_PROD_06",
+                        sql_stmt
+                    ));    // Return
+                }
+
+                // Product info update succeeded.
+                return res.json(ret_value(
+                    success_msg_base,
+                    null, null, null
+                ));
+            }); // func_03
         }); // func_02
     }); // func_01
 });
@@ -833,67 +958,99 @@ app.get('/viewUsers', function(req, res) {
 
     // Authenticate the user
     var sessionID = emptize(req.query.sessionID);
-    if (!user_authenticated(sessionID)) {
-        return res.json(ret_value(
-            failure_msg_base,
-            ERR_MSG_AUTH_FAILURE + "User must log in to view the users' information.",
-            "E_GET_VIEW_USER_01", null
-        ));
-    }
 
-    // Check if the user is an admin.
-    var session_info = session_find(emptize(req.query.sessionID));
-    if (session_info.role != USER_ROLE_ADMIN) {
-        return res.json(ret_value(
-            failure_msg_base,
-            ERR_MSG_AUTH_FAILURE + "Only admin can view users' information.",
-            "E_GET_VIEW_USER_02", null
-        ));
-    }
-
-    var fname = emptize(req.query.fname);
-    var lname = emptize(req.query.lname);
-
-    // Find the user information from the database.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
             return res.json(ret_value(
                 failure_msg_base,
-                ERR_MSG_DB_CONN_ERR + err,
-                "E_GET_VIEW_USER_03", null
+                "Database connection error: " + err,
+                "E_GET_VIEW_USER_01", null
             ));    // Return
         }
 
-        // This is the SQL statement that queries everything about user.
-        // We do not need so much information right now, so just comment it
-        // out for future reference.
-        //
-        // var sql_stmt = "SELECT User.Name, User.Role, UserContact.FName, "
-        //     "UserContact.LName, UserContact.Addr, UserContact.City, UserContact.State, "
-        //     "UserContact.Zip, UserContact.Email "
-        //     "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID "
-        //     "WHERE UserContact.FName LIKE '%" + fname + "%' OR UserContact.LName LIKE '%" + lname + "%'";
-        //     ;
-
-        var sql_stmt = "SELECT User.ID, User.Name " +
-            "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID " +
-            "WHERE UserContact.FName LIKE '%" + fname + "%' AND UserContact.LName LIKE '%" + lname + "%'";
-            ;
-
-        conn.query(sql_stmt, function(err, rows) {    // func_02
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User" +
+                       "INNER JOIN Session" +
+                       "ON User.ID = Session.UserID" +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 return res.json(ret_value(
                     failure_msg_base,
-                    ERR_MSG_DB_SELECT_ERR + err,
-                    "E_GET_VIEW_USER_04",
+                    "Database SELECT error: " + err,
+                    "E_GET_VIEW_USER_02",
                     sql_stmt
                 ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    // Not authenticated
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Not authenticated.",
+                        "E_GET_VIEW_USER_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
             }
 
-            // User information has been selected.
-            res.json({
-                user_list : rows
-            });
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            // Check if the user is an admin.
+            if (session_info.role != USER_ROLE_ADMIN) {
+                return res.json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_AUTH_FAILURE + "Only admin can view users' information.",
+                    "E_GET_VIEW_USER_04", null
+                ));
+            }
+
+            var fname = emptize(req.query.fname);
+            var lname = emptize(req.query.lname);
+
+            // This is the SQL statement that queries everything about user.
+            // We do not need so much information right now, so just comment it
+            // out for future reference.
+            //
+            // var sql_stmt = "SELECT User.Name, User.Role, UserContact.FName, "
+            //     "UserContact.LName, UserContact.Addr, UserContact.City, UserContact.State, "
+            //     "UserContact.Zip, UserContact.Email "
+            //     "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID "
+            //     "WHERE UserContact.FName LIKE '%" + fname + "%' OR UserContact.LName LIKE '%" + lname + "%'";
+            //     ;
+
+            var sql_stmt = "SELECT User.ID, User.Name " +
+                "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID " +
+                "WHERE UserContact.FName LIKE '%" + fname + "%' AND UserContact.LName LIKE '%" + lname + "%'";
+                ;
+
+            conn.query(sql_stmt, function(err, rows) {    // func_03
+                if (err) {
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        ERR_MSG_DB_SELECT_ERR + err,
+                        "E_GET_VIEW_USER_05",
+                        sql_stmt
+                    ));    // Return
+                }
+
+                // User information has been selected.
+                res.json({
+                    user_list : rows
+                });
+            }); // func_03
         }); // func_02
     }); // func_01
 });
