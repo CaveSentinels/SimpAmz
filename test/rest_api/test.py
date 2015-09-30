@@ -167,7 +167,84 @@ def Test_ViewProducts() :
 # =============================================================================
 
 def Main( args ) :
-    Sandbox()
+    print "=" * 20
+    print "RegisterUser:"
+    result = RegisterUser(uname="scai",
+        pwd="yunshang",
+        role="Customer",
+        fname="Sarah",
+        lname="Cai",
+        addr="",
+        city="",
+        state="",
+        zip="",
+        email=""
+    )
+    print result
+
+    print "=" * 20
+    print "Login:"
+    response = Login(uname="scai", pwd="yunshang")
+    result = json.loads(response)
+    print result
+    session_sarah = result["sessionID"]
+
+    response = Login(uname="jadmin", pwd="admin")
+    result = json.loads(response)
+    print result
+    session_admin = result["sessionID"]
+
+    print "=" * 20
+    print "UpdateContactInfo"
+    result = UpdateContactInfo({
+        'sessionID' : session_sarah,
+        'address' : "4750 Centre Ave. APT 37",
+        'city' : "Pittsburgh",
+        'state' : "PA",
+        'zip' : "15213",
+        'email' : "sarah.cai@gmail.com"
+    })
+    print result
+
+    print "=" * 20
+    print "ModifyProduct"
+    result = ModifyProduct(session_id=session_sarah, prod_id="1", prod_desc="11111", prod_title="1111111111")
+    print result
+
+    print "=" * 20
+    print "ModifyProduct"
+    result = ModifyProduct(session_id=session_admin, prod_id="1", prod_desc="11111", prod_title="1111111111")
+    print result
+
+    print "=" * 20
+    print "ViewUsers"
+    result = ViewUsers(session_id=session_sarah, fName="Sarah")
+    print result
+
+    print "=" * 20
+    print "ViewUsers"
+    result = ViewUsers(session_id=session_admin, fName="Sarah")
+    print result
+
+    print "=" * 20
+    print "ViewProduct"
+    result = ViewProduct(id="1")
+    print result
+
+    print "=" * 20
+    print "ViewProduct"
+    result = ViewProduct(id="2")
+    print result
+
+    print "=" * 20
+    print "Logout"
+    result = Logout(session_sarah)
+    print result
+
+    print "=" * 20
+    print "Logout"
+    result = Logout(session_admin)
+    print result
 
 # =============================================================================
 

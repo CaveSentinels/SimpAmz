@@ -4,22 +4,22 @@ import urllib2
 
 # =============================================================================
 
-# http_request_local_base = "http://ec2-54-165-242-22.compute-1.amazonaws.com:3000"
+# http_request_remote_base = "http://ec2-54-165-242-22.compute-1.amazonaws.com:3000"
 http_request_local_base = "http://localhost:3000"
 
 # =============================================================================
 
 def RegisterUser(uname, pwd, role="", fname="", lname="", addr="", city="", state="", zip="", email="") :
     raw_data = {
-        'fName' : fname,
-        'lName' : lname,
+        'fname' : fname,
+        'lname' : lname,
         'address' : addr,
         'city' : city,
         'state' : state,
         'zip' : zip,
         'email' : email,
-        'uName' : uname,
-        'pWord' : pwd,
+        'username' : uname,
+        'password' : pwd,
         'role' : role
     }
     data = urllib.urlencode(raw_data)
@@ -92,7 +92,7 @@ def ModifyProduct(session_id, prod_id, prod_desc, prod_title) :
 # =============================================================================
 
 def ViewUsers(session_id, fName="", lName="") :
-    query_str = "?sessionID=" + session_id + "&fName=" + fName +"&lName=" + lName
+    query_str = "?sessionID=" + session_id + "&fname=" + fName +"&lname=" + lName
     req = urllib2.Request(http_request_local_base + "/viewUsers" + query_str)
     res = urllib2.urlopen(req)
 
