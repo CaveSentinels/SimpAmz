@@ -236,6 +236,11 @@ function get_role_menu(url, user_role) {
 // ============================================================================
 // Index page
 
+app.get("/", function(req, res) {
+    // Accessing '/' will be redirected to '/index'.
+    res.redirect("/index");
+});
+
 app.get("/index", function(req, res) {
     res.render('index', {
         title: 'SimpAmz',
