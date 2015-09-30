@@ -11,11 +11,12 @@
 from api_wrap import *
 import sys
 import json
+import datetime
 
 # =============================================================================
 
 def PrintRes(action, res) :
-    print "=" * 20
+    print "===================="
     print action
     response = json.loads(res)
     print "Response:"
@@ -166,9 +167,9 @@ def Test_ViewProducts() :
 
 # =============================================================================
 
-def Main( args ) :
-    print "=" * 20
-    print "RegisterUser:"
+def SmokeTest() :
+    print "===================="
+    print "RegisterUser: (Customer: Sarah)"
     result = RegisterUser(uname="scai",
         pwd="yunshang",
         role="Customer",
@@ -182,20 +183,22 @@ def Main( args ) :
     )
     print result
 
-    print "=" * 20
-    print "Login:"
+    print "===================="
+    print "Login: (as Customer)"
     response = Login(uname="scai", pwd="yunshang")
     result = json.loads(response)
     print result
     session_sarah = result["sessionID"]
 
+    print "===================="
+    print "Login: (as Admin)"
     response = Login(uname="jadmin", pwd="admin")
     result = json.loads(response)
     print result
     session_admin = result["sessionID"]
 
-    print "=" * 20
-    print "UpdateContactInfo"
+    print "===================="
+    print "UpdateContactInfo: (Customer: Sarah)"
     result = UpdateContactInfo({
         'sessionID' : session_sarah,
         'address' : "4750 Centre Ave. APT 37",
@@ -206,45 +209,89 @@ def Main( args ) :
     })
     print result
 
-    print "=" * 20
-    print "ModifyProduct"
+    print "===================="
+    print "ModifyProduct: (as Customer)"
     result = ModifyProduct(session_id=session_sarah, prod_id="1", prod_desc="11111", prod_title="1111111111")
     print result
 
-    print "=" * 20
-    print "ModifyProduct"
+    print "===================="
+    print "ModifyProduct: (as Admin)"
     result = ModifyProduct(session_id=session_admin, prod_id="1", prod_desc="11111", prod_title="1111111111")
     print result
 
-    print "=" * 20
-    print "ViewUsers"
+    print "===================="
+    print "ViewUsers: (as Customer)"
     result = ViewUsers(session_id=session_sarah, fName="Sarah")
     print result
 
-    print "=" * 20
-    print "ViewUsers"
+    print "===================="
+    print "ViewUsers: (as Admin)"
     result = ViewUsers(session_id=session_admin, fName="Sarah")
     print result
 
-    print "=" * 20
-    print "ViewProduct"
+    print "===================="
+    print "ViewProduct: (as anyone)"
     result = ViewProduct(id="1")
     print result
 
-    print "=" * 20
-    print "ViewProduct"
+    print "===================="
+    print "ViewProduct: (as anyone)"
     result = ViewProduct(id="2")
     print result
 
-    print "=" * 20
-    print "Logout"
+    print "===================="
+    print "Logout: (Customer: Sarah)"
     result = Logout(session_sarah)
     print result
 
-    print "=" * 20
-    print "Logout"
+    print "===================="
+    print "Logout: (Customer: Admin)"
     result = Logout(session_admin)
     print result
+
+# =============================================================================
+
+def Benchmark() :
+    # Login
+    response = Login(uname="jadmin", pwd="admin")
+    result = json.loads(response)
+    session_admin = result["sessionID"]
+
+    print "===================="
+    print "Benchmarking read:"
+    n = 1000
+    start = datetime.datetime.now()
+    for i in range(0, n) :
+        ViewProduct(id="1")
+    end = datetime.datetime.now()
+    diff = end - start
+    t = diff.total_seconds()
+    print "Query: " + str(n) + " queries"
+    print "Total time: " + str(t) + " second(s)"
+    print "Average time: " + str(n / t) + " RPS"
+
+    print "===================="
+    print "Benchmarking update:"
+    n = 1000
+    start = datetime.datetime.now()
+    for i in range(0, n) :
+        ModifyProduct(session_id=session_admin, prod_id="1", prod_desc="11111", prod_title="1111111111")
+    end = datetime.datetime.now()
+    diff = end - start
+    t = diff.total_seconds()
+    print "Update: " + str(n) + " updates"
+    print "Total time: " + str(t) + " second(s)"
+    print "Average time: " + str(n / t) + " RPS"
+
+# =============================================================================
+
+def Main( args ) :
+    if args[1] == "smoke_test" :
+        SmokeTest()
+    elif args[1] == "benchmark" :
+        Benchmark()
+    else :
+        print "Invalid argument: ", args[1]
 
 # =============================================================================
 

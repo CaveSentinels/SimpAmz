@@ -345,6 +345,7 @@ app.post("/registerUser", function(req, res) {
         var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" + _Q(uname);
         conn.query(sql_stmt, function(err, rows) {    // func_02
             if (err) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
                     "Database QUERY error: " + err,
@@ -353,6 +354,7 @@ app.post("/registerUser", function(req, res) {
                 ));    // Return
             } else {
                 if (rows.length > 0) {
+                    conn.release();
                     return res.json(ret_value(
                         failure_msg_base,
                         "User name already exists: " + uname,
@@ -368,6 +370,7 @@ app.post("/registerUser", function(req, res) {
                 _Q(uname) + ", " + _Q(pwd) + ", " + _Q(role) + ")";
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
+                    conn.release();
                     return res.json(ret_value(
                         failure_msg_base,
                         "Database INSERT INTO error: " + err,
@@ -387,6 +390,7 @@ app.post("/registerUser", function(req, res) {
                         _Q(zip) + ", " + _Q(email) + ", " + _Q(uid) + ")";
                     conn.query(sql_stmt, function(err, result) {    // func_04
                         if (err) {
+                            conn.release();
                             return res.json(ret_value(
                                 failure_msg_base,
                                 "Database INSERT INTO error: " + err,
@@ -394,6 +398,7 @@ app.post("/registerUser", function(req, res) {
                                 sql_stmt
                             ));    // Return
                         } else {
+                            conn.release();
                             // OK. Finally we've done everything.
                             // Return success.
                             return res.json(ret_value(
@@ -498,8 +503,8 @@ app.post('/login', function(req, res) {
             conn.escape(password) + "";
 
         conn.query(sql_stmt, function(err, rows) {  // Func_02
-            conn.release();
             if (err) {
+                conn.release();
                 var ret = ret_value(
                     failure_msg_base,
                     "Database QUERY error: " + err,
@@ -513,6 +518,7 @@ app.post('/login', function(req, res) {
             }
 
             if (rows.length > 1) {
+                conn.release();
                 var ret = ret_value(
                     failure_msg_base,
                     "Database error: The provided user name matches multiple users.",
@@ -526,6 +532,7 @@ app.post('/login', function(req, res) {
             }
 
             if (rows.length == 0) {
+                conn.release();
                 var ret = ret_value(
                     failure_msg_base,
                     "Incorrect user name or password.",
@@ -547,6 +554,7 @@ app.post('/login', function(req, res) {
 
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
+                        conn.release();
                         return res.json(ret_value(
                             failure_msg_base,
                             "Database INSERT INTO error: " + err,
@@ -554,6 +562,7 @@ app.post('/login', function(req, res) {
                             sql_stmt
                         ));    // Return
                     } else {
+                        conn.release();
                         // OK. Finally we've done everything.
                         // Return success.
                         // Return the allowed menu items.
@@ -573,6 +582,7 @@ app.post('/login', function(req, res) {
                     }
                 }); // func_03
             } else {
+                conn.release();
                 // Either we found no record(which means the user or password don't match)
                 // or we found multiple records which is a weird case.
                 var ret = ret_value(
@@ -622,6 +632,7 @@ app.post('/logout', function(req, res) {
         var sql_stmt = "DELETE FROM `Session` WHERE `SessionID`=" + _Q(sessionID);
         conn.query(sql_stmt, function(err, result) {    // func_02
             if (err) {
+                conn.release();
                 return res.json(ret_value(
                     "Database DELETE error: ",
                     err, "E_POST_LOGOUT_02",
@@ -629,6 +640,7 @@ app.post('/logout', function(req, res) {
                 ));    // Return
             } else {
                 if (result.affectedRows == 0) {
+                    conn.release();
                     // If the number of affected rows is 0, that means this
                     // session didn't exist before.
                     return res.json(ret_value(
@@ -637,6 +649,7 @@ app.post('/logout', function(req, res) {
                         null
                     ));    // Return
                 } else if (result.affectedRows > 1) {
+                    conn.release();
                     // This should never happen because the session ID
                     // is guaranteed to be unique in the database.
                     // However, in case this really happens, let's just assume
@@ -648,6 +661,7 @@ app.post('/logout', function(req, res) {
                         null, "E_POST_LOGOUT_04", null
                     ));
                 } else {
+                    conn.release();
                     // Successful logout.
                     return res.json(ret_value(
                         success_msg_base,
@@ -720,6 +734,7 @@ app.post('/updateInfo', function(req, res) {
         var session_info = null;    // Will retrieve the info later.
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
@@ -728,6 +743,7 @@ app.post('/updateInfo', function(req, res) {
                 ));    // Return
             } else {
                 if (rows.length < 1) {
+                    conn.release();
                     // Not authenticated
                     return res.json(ret_value(
                         failure_msg_base,
@@ -772,6 +788,7 @@ app.post('/updateInfo', function(req, res) {
             // Validate parameter: state
             if (user_info.state) {
                 if (valid_state_abbr.indexOf(user_info.state.toUpperCase()) == -1) {
+                    conn.release();
                     // Meaning that state's value is not a valid state abbreviation.
                     return res.json(ret_value(
                         failure_msg_base,
@@ -784,6 +801,7 @@ app.post('/updateInfo', function(req, res) {
             // Validate parameter: zip code.
             if (user_info.zip) {
                 if (!zip_code_pattern.test(user_info.zip)) {
+                    conn.release();
                     // Meaning that zip's value is not a 5-digit zip code.
                     return res.json(ret_value(
                         failure_msg_base,
@@ -797,6 +815,7 @@ app.post('/updateInfo', function(req, res) {
             // We assume that if the format is correct, the email is valid.
             if (user_info.email) {
                 if (!email_pattern.test(user_info.email)) {
+                    conn.release();
                     // Meaning that email's value is not a valid email address.
                     return res.json(ret_value(
                         failure_msg_base,
@@ -822,6 +841,7 @@ app.post('/updateInfo', function(req, res) {
                     " WHERE `UserID`=" + conn.escape(user_info.id);
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
+                        conn.release();
                         return res.json(ret_value(
                             failure_msg_base,
                             "Database UPDATE error: " + err,
@@ -829,11 +849,13 @@ app.post('/updateInfo', function(req, res) {
                             sql_stmt
                         ));    // Return
                     } else {
+                        conn.release();
                         // Update the User table.
                         return db_update_user(conn, user_info, res);
                     }
                 }); // func_03
             } else {
+                conn.release();
                 // If there is nothing to update to the UserContact table,
                 // then only update the User table.
                 return db_update_user(conn, user_info, res);
@@ -868,6 +890,7 @@ app.post('/modifyProduct', function(req, res) {
         var session_info = null;    // Will retrieve the info later.
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
@@ -876,6 +899,7 @@ app.post('/modifyProduct', function(req, res) {
                 ));    // Return
             } else {
                 if (rows.length < 1) {
+                    conn.release();
                     // Not authenticated
                     return res.json(ret_value(
                         failure_msg_base,
@@ -902,6 +926,7 @@ app.post('/modifyProduct', function(req, res) {
             // if not, update the last login time.
 
             if (session_info.role != USER_ROLE_ADMIN) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
                     ERR_MSG_AUTH_FAILURE + "Only admin can modify product information.",
@@ -917,6 +942,7 @@ app.post('/modifyProduct', function(req, res) {
 
             // ID must be provided.
             if (_NUE(prod_info.id)) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
                     ERR_MSG_PARAM + "productId must not be empty.",
@@ -926,6 +952,7 @@ app.post('/modifyProduct', function(req, res) {
 
             // Only update when there is something to update.
             if (_NU(prod_info.description) && _NU(prod_info.title)) {
+                conn.release();
                 return res.json(ret_value(
                     success_msg_base,
                     null, null, null
@@ -940,6 +967,7 @@ app.post('/modifyProduct', function(req, res) {
 
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
+                    conn.release();
                     return res.json(ret_value(
                         failure_msg_base,
                         "Database UPDATE error: " + err,
@@ -948,6 +976,7 @@ app.post('/modifyProduct', function(req, res) {
                     ));    // Return
                 }
 
+                conn.release();
                 // Product info update succeeded.
                 return res.json(ret_value(
                     success_msg_base,
@@ -983,6 +1012,7 @@ app.get('/viewUsers', function(req, res) {
         var session_info = null;    // Will retrieve the info later.
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
@@ -991,6 +1021,7 @@ app.get('/viewUsers', function(req, res) {
                 ));    // Return
             } else {
                 if (rows.length < 1) {
+                    conn.release();
                     // Not authenticated
                     return res.json(ret_value(
                         failure_msg_base,
@@ -1018,6 +1049,7 @@ app.get('/viewUsers', function(req, res) {
 
             // Check if the user is an admin.
             if (session_info.role != USER_ROLE_ADMIN) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
                     ERR_MSG_AUTH_FAILURE + "Only admin can view users' information.",
@@ -1046,6 +1078,7 @@ app.get('/viewUsers', function(req, res) {
 
             conn.query(sql_stmt, function(err, rows) {    // func_03
                 if (err) {
+                    conn.release();
                     return res.json(ret_value(
                         failure_msg_base,
                         ERR_MSG_DB_SELECT_ERR + err,
@@ -1054,6 +1087,7 @@ app.get('/viewUsers', function(req, res) {
                     ));    // Return
                 }
 
+                conn.release();
                 // User information has been selected.
                 res.json({
                     user_list : rows
@@ -1101,6 +1135,7 @@ app.get('/getProducts', function(req, res) {
 
         conn.query(sql_stmt, function(err, rows) {    // func_02
             if (err) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
                     ERR_MSG_DB_SELECT_ERR + err,
@@ -1109,6 +1144,7 @@ app.get('/getProducts', function(req, res) {
                 ));    // Return
             }
 
+            conn.release();
             // Product information has been selected.
             res.json({
                 product_list : rows
