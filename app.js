@@ -543,7 +543,7 @@ app.post('/login', function(req, res) {
 
                 // Now save the session info into database.
                 sql_stmt = "INSERT INTO Session (SessionID, UserID, LastLogin) VALUES (" +
-                    _Q(session_info.sid) + ", " + _Q(session_info.uid) + ", " + _Q(session_info.LastLogin) + ")";
+                    _Q(session_info.sid) + ", " + _Q(session_info.uid) + ", " + _Q(session_info.last_login) + ")";
 
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
@@ -691,6 +691,9 @@ function db_update_user(conn, user_info, res) {
                 ));    // Return
             }
         }); // func_02
+    } else {
+        // Nothing to update. Return empty.
+        return res.json(ret_value(success_msg_base, null, null, null));
     }
 }
 
@@ -710,9 +713,9 @@ app.post('/updateInfo', function(req, res) {
             ));    // Return
         }
 
-        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User" +
-                       "INNER JOIN Session" +
-                       "ON User.ID = Session.UserID" +
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
                        "WHERE Session.SessionID = " + _Q(sessionID);
         var session_info = null;    // Will retrieve the info later.
         conn.query(sql_stmt, function(err, rows) {  // func_02
@@ -858,9 +861,9 @@ app.post('/modifyProduct', function(req, res) {
             ));    // Return
         }
 
-        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User" +
-                       "INNER JOIN Session" +
-                       "ON User.ID = Session.UserID" +
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
                        "WHERE Session.SessionID = " + _Q(sessionID);
         var session_info = null;    // Will retrieve the info later.
         conn.query(sql_stmt, function(err, rows) {  // func_02
@@ -973,9 +976,9 @@ app.get('/viewUsers', function(req, res) {
             ));    // Return
         }
 
-        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User" +
-                       "INNER JOIN Session" +
-                       "ON User.ID = Session.UserID" +
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
                        "WHERE Session.SessionID = " + _Q(sessionID);
         var session_info = null;    // Will retrieve the info later.
         conn.query(sql_stmt, function(err, rows) {  // func_02
