@@ -4,6 +4,8 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var uuid_gen = require('node-uuid');
+var lineReader = require('line-reader');
 
 var mysql = require('mysql');
 var pool = mysql.createPool({
@@ -101,112 +103,13 @@ var g_sessions = [];
 
 function session_create(user_id, user_role) {
     var curr_date_time_value = new Date().valueOf();
+    var rand_uuid = uuid_gen.v4();
     return {
-        sid : user_id + "_" + curr_date_time_value,     // session ID
+        sid : user_id + "_" + curr_date_time_value + "_" + rand_uuid.substring(0, 7),     // session ID
         uid : user_id,         // user ID
         role : user_role,      // user's role
         last_login : curr_date_time_value   // The time the user last logged in
     };
-}
-
-function session_save(session_info) {
-    for (var index = 0; index < g_sessions.length; index++) {
-        if (_NU(g_sessions[index])) {
-            g_sessions[index] = session_info;
-            return;
-        }
-    }
-
-    g_sessions.push(session_info);
-}
-
-function session_find(sessionID) {
-    var index;
-    for (index = 0; index < g_sessions.length; index++) {
-        var s = g_sessions[index];
-        if (!_NU(s) && s.sid == sessionID) {
-            return s;    // The session is found.
-        }
-    }
-    return null;   // The session is not found.
-}
-
-function session_in(sessionID) {
-    var index;
-    for (index = 0; index < g_sessions.length; index++) {
-        var s = g_sessions[index];
-        if (!_NU(s) && s.sid == sessionID) {
-            return true;    // The session is found.
-        }
-    }
-    return false;   // The session is not found.
-}
-
-function session_expired(sessionID) {
-    var index;
-    for (index = 0; index < g_sessions.length; index++) {
-        var s = g_sessions[index];
-        if (!_NU(s) && s.sid == sessionID) {
-            var curr_date_time_value = new Date().valueOf();
-            var ms_diff = curr_date_time_value - s.last_login;
-            return (ms_diff > SESSION_TIMEOUT);
-        }
-    }
-
-    return true;
-}
-
-function session_update_login_time(sessionID) {
-    var index;
-    for (index = 0; index < g_sessions.length; index++) {
-        var s = g_sessions[index];
-        if (!_NU(s) && s.sid == sessionID) {
-            s.last_login = new Date().valueOf();
-        }
-    }
-}
-
-function session_delete(sessionID) {
-    var index;
-    for (index = 0; index < g_sessions.length; index++) {
-        var s = g_sessions[index];
-        if (!_NU(s) && s.sid == sessionID) {
-            delete g_sessions[index];
-            return true;    // Deleted.
-        }
-    }
-    return false;   // The session is not found.
-}
-
-// TODO: Delete later.
-function session_print() {
-    var index;
-    for (index = 0; index < g_sessions.length; index++) {
-        var s = g_sessions[index];
-        if (!_NU(s)) {
-            console.log("Session { \n" + "\tSID: " + s.sid + "\n" + "\tUID: " + s.uid + "\n" + "\tRole: " + s.role + "\n}\n");
-        }
-    }
-}
-
-function user_authenticated(sessionID) {
-    var sid = emptize(sessionID);
-
-    if (!session_in(sid)) {
-        // Session is not found so the user is not authenticated.
-        return false;
-    }
-
-    if (session_expired(sid)) {
-        // If the session has expired, delete it.
-        session_delete(sid);
-        return false;
-    }
-
-    // If the session can be found and has not expired, update the last
-    // login time and return true.
-    session_update_login_time(sid);
-    return true;
 }
 
 // ============================================================================
@@ -414,7 +317,6 @@ app.post("/registerUser", function(req, res) {
 
 // ============================================================================
 // Unregister an existing user.
-// NOTE: The "unregisterUser" has not been tested.
 
 app.post('/unregisterUser', function(req, res) {
     var success_msg_base = "Your account has been unregistered.";
@@ -422,54 +324,87 @@ app.post('/unregisterUser', function(req, res) {
 
     // The user must be authenticated in order to unregister the account.
     var sessionID = emptize(req.body.sessionID);
-    if (!user_authenticated(sessionID)) {
-        return res.json(ret_value(
-            failure_msg_base,
-            ERR_MSG_AUTH_FAILURE + "User must log in before unregistering the account.",
-            "E_POST_UNREG_USER_01", null
-        ));
-    }
 
-    var uid = req.user.id;
-
-    // Go and delete the account from the database.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
             return res.json(ret_value(
                 failure_msg_base,
-                ERR_MSG_DB_CONN_ERR + err,
-                "E_POST_UNREG_USER_02", null
-            ));
+                "Database connection error: " + err,
+                "E_POST_MODIFY_PROD_01", null
+            ));    // Return
         }
 
-        var sql_stmt = "DELETE FROM `User` WHERE `ID` = " + conn.escape(uid);
-
-        conn.query(sql_stmt, function(err, result) {    // func_02
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
+                conn.release();
                 return res.json(ret_value(
                     failure_msg_base,
-                    ERR_MSG_DB_DELETE_ERR + err,
-                    "E_POST_UNREG_USER_03", null
-                ));
+                    "Database SELECT error: " + err,
+                    "E_POST_MODIFY_PROD_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    conn.release();
+                    // Not authenticated
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Not authenticated.",
+                        "E_POST_MODIFY_PROD_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
             }
 
-            // User info has been deleted. Now delete the contact info.
-            sql_stmt = "DELETE FROM `UserContact` WHERE `UserID` = " + conn.escape(uid);
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            sql_stmt = "DELETE FROM `UserContact` WHERE `UserID` = " + conn.escape(session_info.uid);
 
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
                     return res.json(ret_value(
                         failure_msg_base,
                         ERR_MSG_DB_DELETE_ERR + err,
-                        "E_POST_UNREG_USER_04", null
+                        "E_POST_UNREG_USER_03", null
                     ));
                 }
 
-                // Deletion succeeded.
-                return res.json(ret_value(
-                    success_msg_base,
-                    null, null, null
-                ));
+                // User info has been deleted. Now delete the contact info.
+                sql_stmt = "DELETE FROM `User` WHERE `ID` = " + conn.escape(session_info.uid);
+
+                conn.query(sql_stmt, function(err, result) {    // func_04
+                    if (err) {
+                        return res.status(500).json(ret_value(
+                            failure_msg_base,
+                            ERR_MSG_DB_DELETE_ERR + err,
+                            "E_POST_UNREG_USER_04", null
+                        ));
+                    }
+
+                    // Deletion succeeded.
+                    return res.json(ret_value(
+                        success_msg_base,
+                        null, null, null
+                    ));
+                }); // func_04
             }); // func_03
         }); // func_02
     }); // func_01
@@ -614,7 +549,6 @@ app.post('/login', function(req, res) {
 // Logout
 
 app.post('/logout', function(req, res) {
-
     var success_msg_base = "You have been logged out";
     var failure_msg_base = "You are not currently logged in";
 
@@ -646,7 +580,7 @@ app.post('/logout', function(req, res) {
                     return res.json(ret_value(
                         failure_msg_base,
                         null, "E_POST_LOGOUT_03",
-                        null
+                        sql_stmt
                     ));    // Return
                 } else if (result.affectedRows > 1) {
                     conn.release();
@@ -1071,7 +1005,7 @@ app.get('/viewUsers', function(req, res) {
             //     "WHERE UserContact.FName LIKE '%" + fname + "%' OR UserContact.LName LIKE '%" + lname + "%'";
             //     ;
 
-            var sql_stmt = "SELECT User.ID, User.Name " +
+            var sql_stmt = "SELECT User.ID, User.Name, UserContact.FName, UserContact.LName " +
                 "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID " +
                 "WHERE UserContact.FName LIKE '%" + fname + "%' AND UserContact.LName LIKE '%" + lname + "%'";
                 ;
@@ -1156,6 +1090,127 @@ app.get('/getProducts', function(req, res) {
 // ============================================================================
 // Sandbox: A place to test or experiment various capabilities.
 
+function db_insert_record(record) {
+    var categories = "";
+    var index;
+    for (index = 0; index < record.categories.length; ++index) {
+        categories += record.categories[index];
+    }
+
+    var sql_stmt = "INSERT INTO `Product` (`ID`, `ASIN`, `Description`, `Category`, `Title`, `Group`) VALUES (" +
+        pool.escape(record.Id) + ", " + pool.escape(record.ASIN) + ", " +
+        pool.escape(null) + ", " + pool.escape(categories) + ", " +
+        pool.escape(record.title) + ", " + pool.escape(record.group) + ")";
+
+    pool.query(sql_stmt, function(err, result) {
+        if (err) {
+            // console.log("==============================");
+            // console.log("DB update error:");
+            // console.log(err);
+            // console.log(sql_stmt);
+            return false;
+        }
+    });
+
+    return true;
+}
+
+app.get('/sandbox/load_data', function(req, res) {
+    var record = new Object();
+    record.categories = [];
+    var jsonRecord;
+    var categories = false;
+    var state = 1;  // 1 means "Not in any record"
+
+    var data_source = req.query.source;
+    var data_file = null;
+    if (data_source == "amazon-meta") {
+        data_file = "amazon-meta.txt";
+    } else {
+        data_file = "sample.txt";
+    }
+
+    var total_count = 0;
+    var error_count = 0;
+
+    lineReader.eachLine(data_file, function(line, last) {
+
+        // console.log("Current line: " + line);
+
+        if (line.indexOf("Id:") >= 0) {
+            if (state == 1 /*Not in any record*/) {
+                // If we are currently not in any record, that means this is
+                // the very first record.
+                var subStr = line.substring(line.indexOf("Id:")+3).trim();
+                record.Id = subStr;
+
+                state = 2 /*In record*/;
+            } else if (state == 2 /*In record*/) {
+                // If we are already in a record but encounter "Id" again,
+                // that means we've come to the next record.
+                // So we need to store the previous record to DB.
+
+                ++total_count;
+                if (!db_insert_record(record)) {
+                    ++error_count;
+                }
+
+                // Reinitialize the record and add Id value
+                record = new Object();
+                record.categories = [];
+                var subStr = line.substring(line.indexOf("Id:")+3).trim();
+                record.Id = subStr;
+            }
+        }
+
+        if (line.indexOf("ASIN:") >= 0) {
+            // Record the ASIN.
+            var subStr = line.substring(line.indexOf("ASIN:")+5).trim();
+            record.ASIN = subStr;
+        }
+
+        if (line.indexOf("title:") >= 0) {
+            // Record the title
+            var subStr = line.substring(line.indexOf("title:")+6).trim();
+            record.title = subStr;
+        }
+
+        if (line.indexOf("group:") >= 0) {
+            // Record the group
+            var subStr = line.substring(line.indexOf("group:")+6).trim();
+            record.group = subStr;
+        }
+
+        if (line.indexOf("categories:") >= 0 || line.indexOf("reviews:") > 0 || state == 3/*In categories*/) {
+            //Check if there are more categories to record and make sure we haven't started reading reviews
+            if (line.indexOf("reviews:") >= 0) {
+                state = 2;  // Back to "In record"
+            } else if (line.indexOf("categories:") >= 0) {
+                state = 3;  // In categories
+            } else if (state == 3) {
+                var subStr = line.substring(line.indexOf("|Books")).trim();
+                record.categories.push(subStr);
+            }
+        }
+
+        if (last) {
+            ++total_count;
+            if (!db_insert_record(record)) {
+                ++error_count;
+            }
+
+            console.log("==============================");
+            console.log("Data import completed:");
+            console.log("Total: " + total_count + " record(s)");
+            console.log("Error: " + error_count + " record(s)");
+            console.log("==============================");
+
+            res.json();
+            return false; // stop reading
+        }
+    });
+});
+
 app.get('/sandbox', function(req, res) {
 
     // Print the HTTP headers
@@ -1167,7 +1222,7 @@ app.get('/sandbox', function(req, res) {
     }
     console.log("==============================");
 
-    res.json(req["headers"]);
+    return res.json(req["headers"]);
 });
 
 // ============================================================================
