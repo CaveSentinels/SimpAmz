@@ -238,7 +238,6 @@ app.post("/registerUser", function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            conn.release();
             return res.json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
@@ -328,7 +327,6 @@ app.post('/unregisterUser', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            conn.release();
             return res.json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
@@ -427,7 +425,6 @@ app.post('/login', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // Func_01
         if (err) {
-            conn.release();
             var ret = ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
@@ -564,7 +561,6 @@ app.post('/logout', function(req, res) {
     // Try to delete the session directly.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            conn.release();
             return res.json(ret_value(
                 "Database connection error: ",
                 err, "E_POST_LOGOUT_01", null
@@ -665,7 +661,6 @@ app.post('/updateInfo', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            conn.release();
             return res.json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
@@ -796,17 +791,17 @@ app.post('/updateInfo', function(req, res) {
                         ));    // Return
                     } else {
                         // Update the User table.
-                        var ret_value = db_update_user(conn, user_info, res);
+                        var rv = db_update_user(conn, user_info, res);
                         conn.release();
-                        return ret_value;
+                        return rv;
                     }
                 }); // func_03
             } else {
                 // If there is nothing to update to the UserContact table,
                 // then only update the User table.
-                var ret_value = db_update_user(conn, user_info, res);
+                var rv = db_update_user(conn, user_info, res);
                 conn.release();
-                return ret_value;
+                return rv;
             }
         }); // func_02
     }); // func_01
@@ -824,7 +819,6 @@ app.post('/modifyProduct', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            conn.release();
             return res.json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
@@ -947,7 +941,6 @@ app.get('/viewUsers', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            conn.release();
             return res.json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
@@ -1062,7 +1055,6 @@ app.get('/getProducts', function(req, res) {
     // Find the product information from the database.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            conn.release();
             return res.json(ret_value(
                 failure_msg_base,
                 ERR_MSG_DB_CONN_ERR + err,
