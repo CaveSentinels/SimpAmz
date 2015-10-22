@@ -9,7 +9,7 @@ var lineReader = require('line-reader');
 
 var mysql = require('mysql');
 var pool = mysql.createPool({
-    connectionLimit : 2,
+    connectionLimit : 100,
     host : 'localhost',
     user : 'root',
     password : 'password',
