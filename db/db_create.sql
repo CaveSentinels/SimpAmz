@@ -12,7 +12,7 @@ CREATE TABLE `User` (
   `Role` varchar(10) NOT NULL DEFAULT 'Customer',
   PRIMARY KEY (`ID`),
   UNIQUE KEY `Name_UNIQUE` (`Name`)
-) ENGINE=InnoDB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 
 CREATE TABLE `UserContact` (
@@ -29,7 +29,7 @@ CREATE TABLE `UserContact` (
   KEY `Search` (`FName`,`LName`),
   KEY `UserRef_idx` (`UserID`),
   CONSTRAINT `UserRef` FOREIGN KEY (`UserID`) REFERENCES `User` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 
 CREATE TABLE `Session` (
@@ -50,7 +50,7 @@ CREATE TABLE `Product` (
   `Title` varchar(4096) DEFAULT NULL,
   `Group` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=101 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 
 # ================================================================================
@@ -62,10 +62,6 @@ INSERT INTO User (ID, Name, Password, Role) VALUES (3, 'tbucktoo', 'bucktoo', 'C
 INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VALUES ("", "", "", "", "", "", "", 1);
 INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VALUES ("", "", "", "", "", "", "", 2);
 INSERT INTO UserContact (FName, LName, Addr, City, State, Zip, Email, UserID) VALUES ("", "", "", "", "", "", "", 3);
-
-INSERT INTO Product (ID, Description, Category, Title) VALUES (-1, "Mac Book Pro", "Computer", "MacPro");
-INSERT INTO Product (ID, Description, Category, Title) VALUES (-2, "Robin's coffee cup", "Appliance", "Cup");
-INSERT INTO Product (ID, Description, Category, Title) VALUES (-3, "Diet Coke bottle", "Trash", "Bottle");
 
 -- INSERT INTO `Product` (`ID`, `Description`, `Category`, `Title`) VALUES (1, "", "|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Christianity[12290]|Clergy[12360]|Preaching[12368];|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Christianity[12290]|Clergy[12360]|Sermons[12370];", "Patterns of Preaching: A Sermon Sampler");
 -- INSERT INTO `Product` (`ID`, `Description`, `Category`, `Title`) VALUES (2, "", "|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Earth-Based Religions[12472]|Wicca[12484];|Books[283155]|Subjects[1000]|Religion & Spirituality[22]|Earth-Based Religions[12472]|Witchcraft[12486];", "Candlemas: Feast of Flames");
@@ -167,36 +163,3 @@ INSERT INTO Product (ID, Description, Category, Title) VALUES (-3, "Diet Coke bo
 -- INSERT INTO `Product` (`ID`, `Description`, `Category`, `Title`) VALUES (98, "", "|Music[5174]|Styles[301668]|Classical[85]|Featured Composers, A-Z[5338]|( B )[7346]|Brahms, Johannes[11397]|All Works by Brahms[11426];|Music[5174]|Styles[301668]|Classical[85]|Forms & Genres[36632]|Concertos[36636]|Concertinos[36637];|Music[5174]|Styles[301668]|Classical[85]|Forms & Genres[36632]|Concertos[36636]|General[36639];|Music[5174]|Styles[301668]|Classical[85]|Instruments[38374]|Strings[38439]|Violin[38469];|Music[5174]|Styles[301668]|Classical[85]|Featured Performers, A-Z[38472]|( B )[39670]|Berlin Philharmonic Orchestra[40626];|Music[5174]|Styles[301668]|Classical[85]|Featured Performers, A-Z[38472]|( S )[58403]|Shaham, Gil[59342];|Music[5174]|Styles[301668]|Classical[85]|General[300358];|Music[5174]|Labels[892976]|Amazon.com Label Stores[301122]|Deutsche Grammophon Records[886976];", "Brahms: Violin Concerto; Double Concerto");
 -- INSERT INTO `Product` (`ID`, `Description`, `Category`, `Title`) VALUES (99, "", "|Books[283155]|Subjects[1000]|Business & Investing[3]|Finance[2604]|Finance & Investing[2608];|Books[283155]|Subjects[1000]|Business & Investing[3]|General[2612];|Books[283155]|Subjects[1000]|Business & Investing[3]|Investing[2665]|Options[2672];|Books[283155]|Subjects[1000]|Business & Investing[3]|Personal Finance[2717]|General[2722];|Books[283155]|Subjects[1000]|Professional & Technical[173507]|Accounting & Finance[173509]|Finance[266119]|General[266120];|[265523]|Amazon.com Stores[285080]|Home & Office[764512]|Business & Investing Books[767740]|Finance[767866]|Finance & Investing[767872];|[265523]|Amazon.com Stores[285080]|Home & Office[764512]|Business & Investing Books[767740]|General[767880];|[265523]|Amazon.com Stores[285080]|Home & Office[764512]|Business & Investing Books[767740]|Investing[767974]|Options[767988];|[265523]|Amazon.com Stores[285080]|Home & Office[764512]|Business & Investing Books[767740]|Personal Finance[768056]|General[768064];", "An Employee's Guide to Stock Options");
 -- INSERT INTO `Product` (`ID`, `Description`, `Category`, `Title`) VALUES (100, "", "|Books[283155]|Subjects[1000]|Medicine[13996]|Administration & Policy[13998]|General[13999];|Books[283155]|Subjects[1000]|Professional & Technical[173507]|Medical[173514]|Administration & Medicine Economics[227560]|General[227561];", "Guide to Effective Staff Development in Health Care Organizations : A Systems Approach to Successful Training (J-B AHA Press)");
-
-
-# ================================================================================
-# Reinitialize database.
-
-DELETE FROM UserContact WHERE ID >= 1;
-DELETE FROM User WHERE ID >= 1;
-DELETE FROM Product WHERE ID >= 1;
-
-SELECT * FROM UserContact;
-SELECT * FROM User;
-SELECT * FROM Product;
-
-
-# ================================================================================
-# Test script.
-
-SELECT User.Name, User.Role, UserContact.FName, UserContact.LName, UserContact.Addr, 
-UserContact.City, UserContact.State, UserContact.Zip, UserContact.Email 
-FROM User 
-INNER JOIN UserContact 
-ON User.ID = UserContact.UserID
-WHERE UserContact.FName LIKE "%o%" OR UserContact.LName LIKE "%x%"
-;
-
-# ----------
-INSERT INTO Session (SessionID, UserID, LastLogin) VALUES ("1_1442416033613", 1, 1442416033613);
-
-SELECT `User`.`ID`, `User`.`Role`, Session.LastLogin FROM `User`
-INNER JOIN `Session`
-ON `User`.`ID` = `Session`.`UserID`
-WHERE `Session`.`SessionID` = "1_1442416033613"
-;
