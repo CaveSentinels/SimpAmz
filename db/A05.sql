@@ -53,6 +53,27 @@ CREATE TABLE `Product` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 
+CREATE TABLE `Inventory` (
+  `ProdID` int(11) NOT NULL,
+  `Quantity` int(11) DEFAULT '0',
+  PRIMARY KEY (`ProdID`),
+  CONSTRAINT `Inventory_ProdID` FOREIGN KEY (`ProdID`) REFERENCES `Product` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+CREATE TABLE `Order` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `ProdID` int(11) DEFAULT NULL,
+  `Quantity` int(11) DEFAULT NULL,
+  `UserID` int(11) DEFAULT NULL,
+  PRIMARY KEY (`ID`),
+  KEY `Order_ProdID_idx` (`ProdID`),
+  KEY `Order_UserID_idx` (`UserID`),
+  CONSTRAINT `Order_ProdID` FOREIGN KEY (`ProdID`) REFERENCES `Product` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION,
+  CONSTRAINT `Order_UserID` FOREIGN KEY (`UserID`) REFERENCES `User` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
 # ================================================================================
 # Insert initial data.
 
