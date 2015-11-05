@@ -1097,6 +1097,225 @@ app.get('/getProducts', function(req, res) {
 });
 
 // ============================================================================
+// Purchase a product
+
+app.post('/buyProduct', function(req, res) {
+    var success_msg_base = "01 the purchase has been made successfully";
+    var failure_msg_base = "There was a problem with this action";
+
+    // Authenticate the user
+    var sessionID = emptize(req.body.sessionID);
+
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_BUY_PROD_01", null
+            ));    // Return
+        }
+
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
+            if (err) {
+                conn.release();
+                return res.json(ret_value(
+                    failure_msg_base,
+                    "Database SELECT error: " + err,
+                    "E_POST_BUY_PROD_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    conn.release();
+                    // Not authenticated
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "02 you need to log in prior to buying a product",
+                        "E_POST_BUY_PROD_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
+            }
+
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            var prod_info = {
+                id : req.body.productId,
+                quantity : 1    // Default value
+            };
+
+            // ID must be provided.
+            if (_NUE(prod_info.id)) {
+                conn.release();
+                return res.json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_PARAM + "productId must not be empty.",
+                    "E_POST_BUY_PROD_04", null
+                ));
+            }
+
+            var sql_stmt = "UPDATE `Inventory` SET " +
+                "`Quantity` = `Quantity` - " + prod_info.quantity +
+                " WHERE `ProdID` = " + prod_info.id + " AND `Quantity` > 0"
+                ;
+
+            conn.query(sql_stmt, function(err, result) {    // func_03
+                if (err) {
+                    conn.release();
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Database UPDATE error: " + err,
+                        "E_POST_BUY_PROD_05",
+                        sql_stmt
+                    ));    // Return
+                }
+
+                if (result.affectedRows == 0) {
+                    // Either the ID is wrong or the quantity is already 0.
+                    conn.release();
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "03 that product is out of stock",
+                        "E_POST_BUY_PROD_06",
+                        sql_stmt
+                    ));     // Return
+                }
+
+                // Insert the order info.
+                sql_stmt = "INSERT INTO `Order` (`ProdID`, `Quantity`) VALUES (" +
+                    prod_info.id + ", " + prod_info.quantity + ")";
+
+                conn.query(sql_stmt, function(err, result) {    // func_04
+                    if (err) {
+                        conn.release();
+                        return res.json(ret_value(
+                            failure_msg_base,
+                            "Database INSERT error: " + err,
+                            "E_POST_BUY_PROD_08",
+                            sql_stmt
+                        ));    // Return
+                    }
+
+                    conn.release();
+                    // Inventory info update succeeded.
+                    return res.json(ret_value(
+                        success_msg_base,
+                        null, null, null
+                    ));
+                }); // func_04
+            }); // func_03
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
+// Get orders
+
+app.get('/getOrders', function(req, res) {
+    var failure_msg_base = "There was a problem with this action";
+
+    // Authenticate the user
+    var sessionID = emptize(req.query.sessionID);
+
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_GET_ORDERS_01", null
+            ));    // Return
+        }
+
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
+            if (err) {
+                conn.release();
+                return res.json(ret_value(
+                    failure_msg_base,
+                    "Database SELECT error: " + err,
+                    "E_GET_ORDERS_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    conn.release();
+                    // Not authenticated
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        "Not authenticated.",
+                        "E_GET_ORDERS_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
+            }
+
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            var sql_stmt = "SELECT `ProdID`, `Quantity` FROM `Order`";
+
+            conn.query(sql_stmt, function(err, rows) {    // func_03
+                if (err) {
+                    conn.release();
+                    return res.json(ret_value(
+                        failure_msg_base,
+                        ERR_MSG_DB_SELECT_ERR + err,
+                        "E_GET_ORDERS_04",
+                        sql_stmt
+                    ));    // Return
+                }
+
+                // Create the order list.
+                var order_list = [];
+                for (i = 0; i < rows.length; i++) {
+                    order_list.push({
+                        productId : rows[i].ProdID,
+                        quantitySold : rows[i].Quantity
+                    });
+                }
+
+                conn.release();
+                return res.json(order_list);
+            }); // func_03
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
 // Sandbox: A place to test or experiment various capabilities.
 
 function db_insert_record(record) {
@@ -1106,6 +1325,7 @@ function db_insert_record(record) {
         categories += record.categories[index];
     }
 
+    // Insert product information.
     var sql_stmt = "INSERT INTO `Product` (`ID`, `ASIN`, `Description`, `Category`, `Title`, `Group`) VALUES (" +
         pool.escape(record.Id) + ", " + pool.escape(record.ASIN) + ", " +
         pool.escape(null) + ", " + pool.escape(categories) + ", " +
@@ -1113,10 +1333,17 @@ function db_insert_record(record) {
 
     pool.query(sql_stmt, function(err, result) {
         if (err) {
-            // console.log("==============================");
-            // console.log("DB update error:");
-            // console.log(err);
-            // console.log(sql_stmt);
+            return false;
+        }
+    });
+
+    // Insert product inventory.
+    var default_quantity = "5";
+    sql_stmt = "INSERT INTO `Inventory` (`ProdID`, `Quantity`) VALUES (" +
+        pool.escape(record.Id) + ", " + default_quantity + ")";
+
+    pool.query(sql_stmt, function(err, result) {
+        if (err) {
             return false;
         }
     });
