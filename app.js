@@ -176,7 +176,7 @@ app.post("/registerUser", function(req, res) {
     if (state) {
         if (valid_state_abbr.indexOf(state.toUpperCase()) == -1) {
             // Meaning that state's value is not a valid state abbreviation.
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Invalid state abbreviation: " + state,
                 "E_POST_REG_USER_01", null
@@ -188,7 +188,7 @@ app.post("/registerUser", function(req, res) {
     if (zip) {
         if (!zip_code_pattern.test(zip)) {
             // Meaning that zip's value is not a 5-digit zip code.
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Invalid zip code: " + zip,
                 "E_POST_REG_USER_02", null
@@ -201,7 +201,7 @@ app.post("/registerUser", function(req, res) {
     if (email) {
         if (!email_pattern.test(email)) {
             // Meaning that email's value is not a valid email address.
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Invalid email format: " + email,
                 "E_POST_REG_USER_03", null
@@ -212,7 +212,7 @@ app.post("/registerUser", function(req, res) {
     // Validate parameter: user name must not be empty and must not exist.
     if (!uname || uname == "") {
         // Meaning that uname is empty, which is not allowed.
-        return res.json(ret_value(
+        return res.status(400).json(ret_value(
             failure_msg_base,
             "User name must not be empty.",
             "E_POST_REG_USER_05", null
@@ -222,7 +222,7 @@ app.post("/registerUser", function(req, res) {
     // Validate parameter: password must not be empty and must not exist.
     if (!pwd || pwd == "") {
         // Meaning that pwd is empty, which is not allowed.
-        return res.json(ret_value(
+        return res.status(400).json(ret_value(
             failure_msg_base,
             "Password must not be empty.",
             "E_POST_REG_USER_06", null
@@ -238,7 +238,7 @@ app.post("/registerUser", function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(500).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_REG_USER_04", null
@@ -249,7 +249,7 @@ app.post("/registerUser", function(req, res) {
         conn.query(sql_stmt, function(err, rows) {    // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     failure_msg_base,
                     "Database QUERY error: " + err,
                     "E_POST_REG_USER_07",
@@ -258,7 +258,7 @@ app.post("/registerUser", function(req, res) {
             } else {
                 if (rows.length > 0) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(500).json(ret_value(
                         failure_msg_base,
                         "User name already exists: " + uname,
                         "E_POST_REG_USER_08",
@@ -274,7 +274,7 @@ app.post("/registerUser", function(req, res) {
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(500).json(ret_value(
                         failure_msg_base,
                         "Database INSERT INTO error: " + err,
                         "E_POST_REG_USER_09",
@@ -294,7 +294,7 @@ app.post("/registerUser", function(req, res) {
                     conn.query(sql_stmt, function(err, result) {    // func_04
                         if (err) {
                             conn.release();
-                            return res.json(ret_value(
+                            return res.status(500).json(ret_value(
                                 failure_msg_base,
                                 "Database INSERT INTO error: " + err,
                                 "E_POST_REG_USER_10",
@@ -327,7 +327,7 @@ app.post('/unregisterUser', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(500).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_MODIFY_PROD_01", null
@@ -342,7 +342,7 @@ app.post('/unregisterUser', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_POST_MODIFY_PROD_02",
@@ -352,7 +352,7 @@ app.post('/unregisterUser', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(401).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_POST_MODIFY_PROD_03",
@@ -381,7 +381,7 @@ app.post('/unregisterUser', function(req, res) {
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(500).json(ret_value(
                         failure_msg_base,
                         ERR_MSG_DB_DELETE_ERR + err,
                         "E_POST_UNREG_USER_03", null
@@ -433,7 +433,7 @@ app.post('/login', function(req, res) {
             ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
             ret["sessionID"] = "";
-            return res.json(ret);
+            return res.status(500).json(ret);
         }
 
         var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" +
@@ -452,7 +452,7 @@ app.post('/login', function(req, res) {
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 ret["sessionID"] = "";
-                return res.json(ret);
+                return res.status(500).json(ret);
             }
 
             if (rows.length > 1) {
@@ -466,7 +466,7 @@ app.post('/login', function(req, res) {
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 ret["sessionID"] = "";
-                return res.json(ret);
+                return res.status(500).json(ret);
             }
 
             if (rows.length == 0) {
@@ -479,7 +479,7 @@ app.post('/login', function(req, res) {
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 ret["sessionID"] = "";
-                return res.json(ret);
+                return res.status(401).json(ret);
             }
 
             if (rows.length == 1) {
@@ -493,7 +493,7 @@ app.post('/login', function(req, res) {
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
                         conn.release();
-                        return res.json(ret_value(
+                        return res.status(500).json(ret_value(
                             failure_msg_base,
                             "Database INSERT INTO error: " + err,
                             "E_POST_LOGIN_05",
@@ -530,7 +530,7 @@ app.post('/login', function(req, res) {
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 ret["sessionID"] = "";
-                return res.json(ret);
+                return res.status(500).json(ret);
             }
         }); // Func_02
 
@@ -544,7 +544,7 @@ app.post('/login', function(req, res) {
             ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
             ret["sessionID"] = "";
-            return res.json(ret);
+            return res.status(500).json(ret);
         }); // Func_03
     }); // Func_01
 });
@@ -561,7 +561,7 @@ app.post('/logout', function(req, res) {
     // Try to delete the session directly.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(500).json(ret_value(
                 "Database connection error: ",
                 err, "E_POST_LOGOUT_01", null
             ));    // Return
@@ -571,7 +571,7 @@ app.post('/logout', function(req, res) {
         conn.query(sql_stmt, function(err, result) {    // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     "Database DELETE error: ",
                     err, "E_POST_LOGOUT_02",
                     sql_stmt
@@ -581,7 +581,7 @@ app.post('/logout', function(req, res) {
                     conn.release();
                     // If the number of affected rows is 0, that means this
                     // session didn't exist before.
-                    return res.json(ret_value(
+                    return res.status(500).json(ret_value(
                         failure_msg_base,
                         null, "E_POST_LOGOUT_03",
                         sql_stmt
@@ -630,7 +630,7 @@ function db_update_user(conn, user_info, res) {
         conn.query(sql_stmt, function(err, result) {    // func_02
             if (err) {
                 // conn will be released in the caller.
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     failure_msg_base,
                     "Database UPDATE error: " + err,
                     "E_POST_UPDATE_INFO_06",
@@ -661,7 +661,7 @@ app.post('/updateInfo', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(500).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_UPDATE_INFO_01", null
@@ -676,7 +676,7 @@ app.post('/updateInfo', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_POST_UPDATE_INFO_02",
@@ -686,7 +686,7 @@ app.post('/updateInfo', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(401).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_POST_UPDATE_INFO_03",
@@ -731,7 +731,7 @@ app.post('/updateInfo', function(req, res) {
                 if (valid_state_abbr.indexOf(user_info.state.toUpperCase()) == -1) {
                     conn.release();
                     // Meaning that state's value is not a valid state abbreviation.
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Invalid state abbreviation: " + user_info.state,
                         "E_POST_UPDATE_INFO_02", null
@@ -744,7 +744,7 @@ app.post('/updateInfo', function(req, res) {
                 if (!zip_code_pattern.test(user_info.zip)) {
                     conn.release();
                     // Meaning that zip's value is not a 5-digit zip code.
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Invalid zip code: " + user_info.zip,
                         "E_POST_UPDATE_INFO_03", null
@@ -758,7 +758,7 @@ app.post('/updateInfo', function(req, res) {
                 if (!email_pattern.test(user_info.email)) {
                     conn.release();
                     // Meaning that email's value is not a valid email address.
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Invalid email format: " + user_info.email,
                         "E_POST_UPDATE_INFO_04", null
@@ -783,7 +783,7 @@ app.post('/updateInfo', function(req, res) {
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
                         conn.release();
-                        return res.json(ret_value(
+                        return res.status(400).json(ret_value(
                             failure_msg_base,
                             "Database UPDATE error: " + err,
                             "E_POST_UPDATE_INFO_06",
@@ -819,7 +819,7 @@ app.post('/modifyProduct', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_MODIFY_PROD_01", null
@@ -834,7 +834,7 @@ app.post('/modifyProduct', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_POST_MODIFY_PROD_02",
@@ -844,7 +844,7 @@ app.post('/modifyProduct', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_POST_MODIFY_PROD_03",
@@ -870,7 +870,7 @@ app.post('/modifyProduct', function(req, res) {
 
             if (session_info.role != USER_ROLE_ADMIN) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_AUTH_FAILURE + "Only admin can modify product information.",
                     "E_POST_MODIFY_PROD_04", null
@@ -886,7 +886,7 @@ app.post('/modifyProduct', function(req, res) {
             // ID must be provided.
             if (_NUE(prod_info.id)) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_PARAM + "productId must not be empty.",
                     "E_POST_MODIFY_PROD_05", null
@@ -911,7 +911,7 @@ app.post('/modifyProduct', function(req, res) {
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Database UPDATE error: " + err,
                         "E_POST_MODIFY_PROD_06",
@@ -941,7 +941,7 @@ app.get('/viewUsers', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_GET_VIEW_USER_01", null
@@ -956,7 +956,7 @@ app.get('/viewUsers', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_GET_VIEW_USER_02",
@@ -966,7 +966,7 @@ app.get('/viewUsers', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_GET_VIEW_USER_03",
@@ -993,7 +993,7 @@ app.get('/viewUsers', function(req, res) {
             // Check if the user is an admin.
             if (session_info.role != USER_ROLE_ADMIN) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_AUTH_FAILURE + "Only admin can view users' information.",
                     "E_GET_VIEW_USER_04", null
@@ -1022,7 +1022,7 @@ app.get('/viewUsers', function(req, res) {
             conn.query(sql_stmt, function(err, rows) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         ERR_MSG_DB_SELECT_ERR + err,
                         "E_GET_VIEW_USER_05",
@@ -1055,7 +1055,7 @@ app.get('/getProducts', function(req, res) {
     // Find the product information from the database.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 ERR_MSG_DB_CONN_ERR + err,
                 "E_GET_VIEW_PROD_01", null
@@ -1079,7 +1079,7 @@ app.get('/getProducts', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {    // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_DB_SELECT_ERR + err,
                     "E_GET_VIEW_PROD_02",
@@ -1108,7 +1108,7 @@ app.post('/buyProduct', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_BUY_PROD_01", null
@@ -1123,7 +1123,7 @@ app.post('/buyProduct', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_POST_BUY_PROD_02",
@@ -1133,7 +1133,7 @@ app.post('/buyProduct', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "02 you need to log in prior to buying a product",
                         "E_POST_BUY_PROD_03",
@@ -1165,7 +1165,7 @@ app.post('/buyProduct', function(req, res) {
             // ID must be provided.
             if (_NUE(prod_info.id)) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_PARAM + "productId must not be empty.",
                     "E_POST_BUY_PROD_04", null
@@ -1180,7 +1180,7 @@ app.post('/buyProduct', function(req, res) {
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Database UPDATE error: " + err,
                         "E_POST_BUY_PROD_05",
@@ -1191,7 +1191,7 @@ app.post('/buyProduct', function(req, res) {
                 if (result.affectedRows == 0) {
                     // Either the ID is wrong or the quantity is already 0.
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "03 that product is out of stock",
                         "E_POST_BUY_PROD_06",
@@ -1206,7 +1206,7 @@ app.post('/buyProduct', function(req, res) {
                 conn.query(sql_stmt, function(err, result) {    // func_04
                     if (err) {
                         conn.release();
-                        return res.json(ret_value(
+                        return res.status(400).json(ret_value(
                             failure_msg_base,
                             "Database INSERT error: " + err,
                             "E_POST_BUY_PROD_08",
@@ -1237,7 +1237,7 @@ app.get('/getOrders', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_GET_ORDERS_01", null
@@ -1252,7 +1252,7 @@ app.get('/getOrders', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_GET_ORDERS_02",
@@ -1262,7 +1262,7 @@ app.get('/getOrders', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_GET_ORDERS_03",
@@ -1291,7 +1291,7 @@ app.get('/getOrders', function(req, res) {
             conn.query(sql_stmt, function(err, rows) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         ERR_MSG_DB_SELECT_ERR + err,
                         "E_GET_ORDERS_04",
