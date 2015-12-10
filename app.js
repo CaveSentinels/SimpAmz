@@ -1319,6 +1319,62 @@ app.get('/getOrders', function(req, res) {
 // ============================================================================
 // Sandbox: A place to test or experiment various capabilities.
 
+function db_insert_user(user) {
+    // Insert user information.
+    var sql_stmt = "INSERT INTO `User` (`FName`, `LName`, `Addr`, `City`, `State`, `Zip`, `Email`, `UName`, `Password`) VALUES (" +
+        pool.escape(user.fname) + ", " + pool.escape(user.lname) + ", " + pool.escape(user.address) + ", " +
+        pool.escape(user.city) + ", " + pool.escape(user.state) + ", " + pool.escape(user.zip) + ", " +
+        pool.escape(user.email) + ", " + pool.escape(user.uname) + ", " + pool.escape(user.password) +
+        ")";
+
+    pool.query(sql_stmt, function(err, result) {
+        if (err) {
+            return false;
+        }
+    });
+
+    return true;
+}
+
+app.get('/sandbox/load_users', function(req, res) {
+    var data_file = "UserData5000.csv";
+
+    var line_count = 0;
+    var total_count = 0;
+    var error_count = 0;
+
+    lineReader.eachLine(data_file, function(line, last) {
+        ++line_count;
+
+        if (line_count > 1) {
+            // Skip the first line because it is the title.
+            var parts = line.split("|");
+
+            var user = {
+                fname : parts[0], lname : parts[1],
+                address : parts[2], city : parts[3], state : parts[4],
+                zip : "", email : parts[5],
+                uname : parts[6], password : parts[7]
+            };
+
+            ++total_count;
+            if (!db_insert_user(user)) {
+                ++error_count;
+            }
+        }
+
+        if (last) {
+            console.log("==============================");
+            console.log("User import completed:");
+            console.log("Total: " + total_count + " user(s)");
+            console.log("Error: " + error_count + " user(s)");
+            console.log("==============================");
+        }
+    });
+
+    return res.json();
+});
+
 function db_insert_record(record) {
     var categories = "";
     var index;
