@@ -1328,7 +1328,7 @@ function db_insert_user(user) {
         ")";
 
     pool.query(sql_stmt, function(err, result) {
-        if (err) {
+        if (err || result.affectedRows != 1) {
             return false;
         }
     });
@@ -1336,14 +1336,14 @@ function db_insert_user(user) {
     return true;
 }
 
-app.get('/sandbox/load_users', function(req, res) {
-    var data_file = "UserData5000.csv";
-
+app.get('/admin/load_users', function(req, res) {
+    var data_file = "db/UserData5000.csv";
+    var users = [];
     var line_count = 0;
     var total_count = 0;
     var error_count = 0;
 
-    lineReader.eachLine(data_file, function(line, last) {
+    lineReader.eachLine(data_file, function(line, last) {   // func_01
         ++line_count;
 
         if (line_count > 1) {
@@ -1357,22 +1357,31 @@ app.get('/sandbox/load_users', function(req, res) {
                 uname : parts[6], password : parts[7]
             };
 
-            ++total_count;
-            if (!db_insert_user(user)) {
-                ++error_count;
-            }
+            users.push([
+                pool.escape(user.fname), pool.escape(user.lname),
+                pool.escape(user.address), pool.escape(user.city),
+                pool.escape(user.state), pool.escape(user.zip),
+                pool.escape(user.email),
+                pool.escape(user.uname), pool.escape(user.password)
+            ]);
         }
 
         if (last) {
-            console.log("==============================");
-            console.log("User import completed:");
-            console.log("Total: " + total_count + " user(s)");
-            console.log("Error: " + error_count + " user(s)");
-            console.log("==============================");
-        }
-    });
+            var sql_stmt = "INSERT INTO `User` (`FName`, `LName`, `Addr`, `City`, `State`, `Zip`, `Email`, `UName`, `Password`) VALUES ?";
+            pool.query(sql_stmt, [users], function(err, result) {
+                total_count = result.affectedRows;
+                error_count = users.length - total_count;
 
-    return res.json();
+                console.log("==============================");
+                console.log("Data import completed:");
+                console.log("Total: " + total_count + " user(s)");
+                console.log("Error: " + error_count + " user(s)");
+                console.log("==============================");
+
+                return res.json("Data import completed.");
+            });
+        }
+    }); // func_01
 });
 
 function db_insert_record(record) {
@@ -1408,7 +1417,7 @@ function db_insert_record(record) {
     return true;
 }
 
-app.get('/sandbox/load_data', function(req, res) {
+app.get('/admin/load_data', function(req, res) {
     var record = new Object();
     record.categories = [];
     var jsonRecord;
@@ -1494,12 +1503,11 @@ app.get('/sandbox/load_data', function(req, res) {
 
             console.log("==============================");
             console.log("Data import completed:");
-            console.log("Total: " + total_count + " record(s)");
-            console.log("Error: " + error_count + " record(s)");
+            console.log("Total: " + total_count + " product(s)");
+            console.log("Error: " + error_count + " product(s)");
             console.log("==============================");
 
-            res.json();
-            return false; // stop reading
+            return res.json("Data import completed.");
         }
     });
 });

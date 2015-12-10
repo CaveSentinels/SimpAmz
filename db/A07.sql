@@ -11,16 +11,15 @@ CREATE TABLE `User` (
   `LName` varchar(100) DEFAULT NULL COMMENT 'Last name.',
   `Addr` varchar(500) DEFAULT NULL,
   `City` varchar(100) DEFAULT NULL,
-  `State` varchar(2) DEFAULT NULL,
+  `State` varchar(50) DEFAULT NULL,
   `Zip` varchar(5) DEFAULT NULL COMMENT 'Zip code.',
   `Email` varchar(100) DEFAULT NULL,
-  `UName` varchar(100) NOT NULL COMMENT 'User name',
+  `UName` varchar(100) NOT NULL,
   `Password` varchar(200) NOT NULL,
   `Role` varchar(10) NOT NULL DEFAULT 'Customer',
   PRIMARY KEY (`ID`),
-  UNIQUE KEY `UName_UNIQUE` (`UName`),
   KEY `Search` (`FName`,`LName`)
-) ENGINE=InnoDB AUTO_INCREMENT=104 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 
 CREATE TABLE `Session` (
