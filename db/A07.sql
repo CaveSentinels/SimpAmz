@@ -35,10 +35,10 @@ CREATE TABLE `Session` (
 CREATE TABLE `Product` (
   `ID` int(11) NOT NULL AUTO_INCREMENT,
   `ASIN` varchar(45) DEFAULT NULL,
-  `Description` varchar(500) DEFAULT NULL,
-  `Category` varchar(10240) DEFAULT NULL,
   `Title` varchar(4096) DEFAULT NULL,
   `Group` varchar(45) DEFAULT NULL,
+  `Description` varchar(500) DEFAULT NULL,
+  `Categories` varchar(10240) DEFAULT NULL,
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
