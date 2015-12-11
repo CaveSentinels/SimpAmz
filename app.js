@@ -537,44 +537,6 @@ app.post('/logout', function(req, res) {
 // ============================================================================
 // Update Contact Information
 
-function db_update_user(conn, user_info, res) {
-    var failure_msg_base = "There was a problem with this action";
-    var success_msg_base = "Your information has been updated";
-
-    var assignments =
-        sql_set_field_value(conn, "Name", user_info.uname, ",") +
-        sql_set_field_value(conn, "Password", user_info.pwd, "")
-        ;
-
-    if (assignments != "") {
-        // Only update the User table when there is something to update.
-        var sql_stmt = "UPDATE `User` SET "+ assignments +
-            " WHERE `ID`=" + conn.escape(user_info.id);
-        conn.query(sql_stmt, function(err, result) {    // func_02
-            if (err) {
-                // conn will be released in the caller.
-                return res.status(500).json(ret_value(
-                    failure_msg_base,
-                    "Database UPDATE error: " + err,
-                    "E_POST_UPDATE_INFO_06",
-                    sql_stmt
-                ));    // Return
-            } else {
-                // OK. Finally we've done everything.
-                // Return success.
-                // conn will be released in the caller.
-                return res.json(ret_value(
-                    success_msg_base, null, null, null
-                ));    // Return
-            }
-        }); // func_02
-    } else {
-        // Nothing to update. Return empty.
-        // conn will be released in the caller.
-        return res.json(ret_value(success_msg_base, null, null, null));
-    }
-}
-
 app.post('/updateInfo', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
     var success_msg_base = "Your information has been updated";
@@ -649,19 +611,6 @@ app.post('/updateInfo', function(req, res) {
                 pwd : req.body.password
             };
 
-            // Validate parameter: state
-            if (user_info.state) {
-                if (valid_state_abbr.indexOf(user_info.state.toUpperCase()) == -1) {
-                    conn.release();
-                    // Meaning that state's value is not a valid state abbreviation.
-                    return res.status(400).json(ret_value(
-                        failure_msg_base,
-                        "Invalid state abbreviation: " + user_info.state,
-                        "E_POST_UPDATE_INFO_02", null
-                    )); // Return
-                }
-            }
-
             // Validate parameter: zip code.
             if (user_info.zip) {
                 if (!zip_code_pattern.test(user_info.zip)) {
@@ -670,7 +619,7 @@ app.post('/updateInfo', function(req, res) {
                     return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Invalid zip code: " + user_info.zip,
-                        "E_POST_UPDATE_INFO_03", null
+                        "E_POST_UPDATE_INFO_04", null
                     ));    // Return
                 }
             }
@@ -684,25 +633,28 @@ app.post('/updateInfo', function(req, res) {
                     return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Invalid email format: " + user_info.email,
-                        "E_POST_UPDATE_INFO_04", null
+                        "E_POST_UPDATE_INFO_05", null
                     ));    // Return
                 }
             }
 
             // Create the value assignments in the SET part.
-            var assignments = sql_set_field_value(conn, "fName", user_info.fname, ",") +
-                sql_set_field_value(conn, "lName", user_info.lname, ",") +
-                sql_set_field_value(conn, "addr", user_info.addr, ",") +
-                sql_set_field_value(conn, "city", user_info.city, ",") +
-                sql_set_field_value(conn, "state", user_info.state, ",") +
-                sql_set_field_value(conn, "zip", user_info.zip, ",") +
-                sql_set_field_value(conn, "email", user_info.email, "")
+            var assignments =
+                sql_set_field_value(conn, "FName", user_info.fname, ",") +
+                sql_set_field_value(conn, "LName", user_info.lname, ",") +
+                sql_set_field_value(conn, "Addr", user_info.addr, ",") +
+                sql_set_field_value(conn, "City", user_info.city, ",") +
+                sql_set_field_value(conn, "State", user_info.state, ",") +
+                sql_set_field_value(conn, "Zip", user_info.zip, ",") +
+                sql_set_field_value(conn, "Email", user_info.email, ",") +
+                sql_set_field_value(conn, "UName", user_info.uname, ",") +
+                sql_set_field_value(conn, "Password", user_info.pwd, "")
                 ;
 
             if (assignments != "") {
                 // Only update the UserContact table when there is something to update.
-                sql_stmt = "UPDATE `UserContact` SET "+ assignments +
-                    " WHERE `UserID`=" + conn.escape(user_info.id);
+                sql_stmt = "UPDATE `User` SET "+ assignments +
+                    " WHERE `ID`=" + conn.escape(user_info.id);
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
                         conn.release();
@@ -713,18 +665,13 @@ app.post('/updateInfo', function(req, res) {
                             sql_stmt
                         ));    // Return
                     } else {
-                        // Update the User table.
-                        var rv = db_update_user(conn, user_info, res);
                         conn.release();
-                        return rv;
+                        return res.json(ret_value(success_msg_base, null, null, null));
                     }
                 }); // func_03
             } else {
-                // If there is nothing to update to the UserContact table,
-                // then only update the User table.
-                var rv = db_update_user(conn, user_info, res);
                 conn.release();
-                return rv;
+                return res.json(ret_value(success_msg_base, null, null, null));
             }
         }); // func_02
     }); // func_01
@@ -937,9 +884,8 @@ app.get('/viewUsers', function(req, res) {
             //     "WHERE UserContact.FName LIKE '%" + fname + "%' OR UserContact.LName LIKE '%" + lname + "%'";
             //     ;
 
-            var sql_stmt = "SELECT User.ID, User.Name, UserContact.FName, UserContact.LName " +
-                "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID " +
-                "WHERE UserContact.FName LIKE '%" + fname + "%' AND UserContact.LName LIKE '%" + lname + "%'";
+            var sql_stmt = "SELECT User.ID, User.UName, User.FName, User.LName " +
+                "FROM User WHERE User.FName LIKE '%" + fname + "%' AND User.LName LIKE '%" + lname + "%'";
                 ;
 
             conn.query(sql_stmt, function(err, rows) {    // func_03
