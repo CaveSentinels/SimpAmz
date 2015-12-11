@@ -1356,7 +1356,7 @@ function db_insert_user(user) {
 }
 
 app.get('/admin/load_users', function(req, res) {
-    var data_file = "db/UserData5000.csv";
+    var data_file = "./data/UserData5000.csv";
     var users = [];
     var line_count = 0;
     var total_count = 0;
@@ -1444,9 +1444,9 @@ app.get('/admin/load_data', function(req, res) {
     var data_source = req.query.source;
     var data_file = null;
     if (data_source == "amazon-meta") {
-        data_file = "amazon-meta.txt";
+        data_file = "./data/amazon-meta.txt";
     } else {
-        data_file = "sample.txt";
+        data_file = "./data/sample.txt";
     }
 
     var total_count = 0;
