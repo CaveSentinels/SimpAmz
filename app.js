@@ -22,13 +22,6 @@ var app = express();
 
 // ============================================================================
 
-var valid_state_abbr = [
-    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
-    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
-    "VA","WA","WV","WI","WY"
-];
-
 // Do not use the "g" flag if you don't want to reset the index.
 // See this post for more info:
 // http://stackoverflow.com/a/1520853/630364
@@ -37,7 +30,7 @@ var zip_code_pattern = /^\d{5}$/;
 // The email address regex pattern is found here:
 // http://stackoverflow.com/a/1373724/630364
 // God knows how the IETF guys figured out such a complex pattern...
-var email_pattern = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
+var email_pattern = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
 
 // ============================================================================
 
@@ -173,18 +166,6 @@ app.post("/registerUser", function(req, res) {
     var pwd = req.body.password;
     var role = req.body.role;
 
-    // Validate parameter: state
-    if (state) {
-        if (valid_state_abbr.indexOf(state.toUpperCase()) == -1) {
-            // Meaning that state's value is not a valid state abbreviation.
-            return res.status(400).json(ret_value(
-                failure_msg_base,
-                "Invalid state abbreviation: " + state,
-                "E_POST_REG_USER_01", null
-            )); // Return
-        }
-    }
-
     // Validate parameter: zip code.
     if (zip) {
         if (!zip_code_pattern.test(zip)) {
@@ -192,7 +173,7 @@ app.post("/registerUser", function(req, res) {
             return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Invalid zip code: " + zip,
-                "E_POST_REG_USER_02", null
+                "E_POST_REG_USER_01", null
             ));    // Return
         }
     }
@@ -205,7 +186,7 @@ app.post("/registerUser", function(req, res) {
             return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Invalid email format: " + email,
-                "E_POST_REG_USER_03", null
+                "E_POST_REG_USER_02", null
             ));    // Return
         }
     }
@@ -216,7 +197,7 @@ app.post("/registerUser", function(req, res) {
         return res.status(400).json(ret_value(
             failure_msg_base,
             "User name must not be empty.",
-            "E_POST_REG_USER_05", null
+            "E_POST_REG_USER_03", null
         ));    // Return
     }
 
@@ -226,7 +207,7 @@ app.post("/registerUser", function(req, res) {
         return res.status(400).json(ret_value(
             failure_msg_base,
             "Password must not be empty.",
-            "E_POST_REG_USER_06", null
+            "E_POST_REG_USER_04", null
         ));    // Return
     }
 
@@ -242,76 +223,31 @@ app.post("/registerUser", function(req, res) {
             return res.status(500).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
-                "E_POST_REG_USER_04", null
+                "E_POST_REG_USER_05", null
             ));    // Return
         }
 
-        var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" + _Q(uname);
-        conn.query(sql_stmt, function(err, rows) {    // func_02
+        var sql_stmt = "INSERT INTO `User` (`FName`, `LName`, `Addr`, `City`, `State`, `Zip`, `Email`, `UName`, `Password`, `Role`) VALUES (" +
+            _Q(fname) + ", " + _Q(lname) + ", " + _Q(addr) + ", " + _Q(city) + ", " +
+            _Q(state) + ", " + _Q(zip) + ", " + _Q(email) + ", " + _Q(uname) + ", " +
+            _Q(pwd) + ", " + _Q(role) + ")";
+        conn.query(sql_stmt, function(err, result) {    // func_02
             if (err) {
                 conn.release();
                 return res.status(500).json(ret_value(
                     failure_msg_base,
-                    "Database QUERY error: " + err,
-                    "E_POST_REG_USER_07",
+                    "Database INSERT INTO error: " + err,
+                    "E_POST_REG_USER_06",
                     sql_stmt
                 ));    // Return
             } else {
-                if (rows.length > 0) {
-                    conn.release();
-                    return res.status(500).json(ret_value(
-                        failure_msg_base,
-                        "User name already exists: " + uname,
-                        "E_POST_REG_USER_08",
-                        null
-                    ));    // Return
-                }
+                conn.release();
+                // OK. Finally we've done everything.
+                // Return success.
+                return res.json(ret_value(
+                    success_msg_base, null, null, null
+                ));    // Return
             }
-
-            // Now we know that the uname doesn't exist. We can create
-            // the user account.
-            sql_stmt = "INSERT INTO User (Name, Password, Role) VALUES (" +
-                _Q(uname) + ", " + _Q(pwd) + ", " + _Q(role) + ")";
-            conn.query(sql_stmt, function(err, result) {    // func_03
-                if (err) {
-                    conn.release();
-                    return res.status(500).json(ret_value(
-                        failure_msg_base,
-                        "Database INSERT INTO error: " + err,
-                        "E_POST_REG_USER_09",
-                        sql_stmt
-                    ));    // Return
-                } else {
-                    var uid = result.insertId;
-                    // Insert the contact information.
-                    // It is possible that the user doesn't provide any
-                    // contact information. In this case, we just Insert
-                    // an empty row in the database.
-                    sql_stmt = "INSERT INTO UserContact " +
-                        "(FName, LName, Addr, City, State, Zip, Email, UserID) " +
-                        "VALUES (" + _Q(fname) + ", " + _Q(lname) + ", " +
-                        _Q(addr) + ", " + _Q(city) + ", " + _Q(state) + ", " +
-                        _Q(zip) + ", " + _Q(email) + ", " + _Q(uid) + ")";
-                    conn.query(sql_stmt, function(err, result) {    // func_04
-                        if (err) {
-                            conn.release();
-                            return res.status(500).json(ret_value(
-                                failure_msg_base,
-                                "Database INSERT INTO error: " + err,
-                                "E_POST_REG_USER_10",
-                                sql_stmt
-                            ));    // Return
-                        } else {
-                            conn.release();
-                            // OK. Finally we've done everything.
-                            // Return success.
-                            return res.json(ret_value(
-                                success_msg_base, null, null, null
-                            ));    // Return
-                        }
-                    }); // func_04
-                }
-            }); // func_03
         }); // func_02
     }); // func_01
 });
@@ -437,7 +373,7 @@ app.post('/login', function(req, res) {
             return res.status(500).json(ret);
         }
 
-        var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" +
+        var sql_stmt = "SELECT * FROM `User` WHERE `UName`=" +
             conn.escape(username) + " AND `Password`=" +
             conn.escape(password) + "";
 
@@ -1358,11 +1294,9 @@ app.get('/admin/load_users', function(req, res) {
             };
 
             users.push([
-                pool.escape(user.fname), pool.escape(user.lname),
-                pool.escape(user.address), pool.escape(user.city),
-                pool.escape(user.state), pool.escape(user.zip),
-                pool.escape(user.email),
-                pool.escape(user.uname), pool.escape(user.password)
+                user.fname, user.lname,
+                user.address, user.city, user.state, user.zip, user.email,
+                user.uname, user.password
             ]);
         }
 
