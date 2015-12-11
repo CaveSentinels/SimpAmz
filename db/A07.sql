@@ -61,6 +61,16 @@ CREATE TABLE `Order` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
+CREATE TABLE `AlsoBought` (
+  `Bought` int(11) NOT NULL,
+  `AlsoBought` int(11) NOT NULL,
+  PRIMARY KEY (`Bought`,`AlsoBought`),
+  KEY `ProdID_AlsoBought_idx` (`AlsoBought`),
+  CONSTRAINT `ProdID_AlsoBought` FOREIGN KEY (`AlsoBought`) REFERENCES `Product` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION,
+  CONSTRAINT `ProdID_Bought` FOREIGN KEY (`Bought`) REFERENCES `Product` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
 # ================================================================================
 # Insert initial data.
 

@@ -1239,6 +1239,157 @@ app.get('/getOrders', function(req, res) {
 });
 
 // ============================================================================
+// Add AlsoBought info.
+
+app.post('/alsoBought', function(req, res) {
+    var success_msg_base = "01 the request was successful";
+    var failure_msg_base = "02 there was a problem processing the request";
+
+    // Authenticate the user
+    var sessionID = emptize(req.body.sessionID);
+
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.status(400).json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_ALSO_BOUGHT_01", null
+            ));    // Return
+        }
+
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
+            if (err) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    "Database SELECT error: " + err,
+                    "E_POST_ALSO_BOUGHT_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    conn.release();
+                    // Not authenticated
+                    return res.status(400).json(ret_value(
+                        failure_msg_base,
+                        "Not authenticated.",
+                        "E_POST_ALSO_BOUGHT_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
+            }
+
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            if (session_info.role != USER_ROLE_ADMIN) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_AUTH_FAILURE + "Only admin can add also-bought information.",
+                    "E_POST_ALSO_BOUGHT_04", null
+                ));
+            }
+
+            var prod_1_id = req.body.productId1;
+            var prod_2_id = req.body.productId2;
+
+            // ID must be provided.
+            if (_NUE(prod_1_id) || _NUE(prod_2_id)) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_PARAM + "productId1 and productId2 must not be empty.",
+                    "E_POST_ALSO_BOUGHT_05", null
+                ));
+            }
+
+            var sql_stmt = "INSERT INTO `AlsoBought` (`Bought`, `AlsoBought`) VALUES (" +
+                _Q(prod_1_id) + ", " + _Q(prod_2_id) + ")";
+            conn.query(sql_stmt, function(err, result) {    // func_03
+                if (err) {
+                    conn.release();
+                    return res.status(500).json(ret_value(
+                        failure_msg_base,
+                        "Database INSERT INTO error: " + err,
+                        "E_POST_ALSO_BOUGHT_06",
+                        sql_stmt
+                    ));    // Return
+                } else {
+                    conn.release();
+                    // OK. Finally we've done everything.
+                    // Return success.
+                    return res.json(ret_value(
+                        success_msg_base, null, null, null
+                    ));    // Return
+                }
+            }); // func_03
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
+// Get Recommendations
+
+app.post('/getRecommendations', function(req, res) {
+    var success_msg_base = "01 the request was successful";
+    var failure_msg_base = "02 there was a problem processing the request";
+
+    // Get Recommendations does not require the user to log in.
+
+    var prod_id = emptize(req.body.productId);
+
+    // Get the product recommendations from the database.
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.status(400).json(ret_value(
+                failure_msg_base,
+                ERR_MSG_DB_CONN_ERR + err,
+                "E_POST_GET_RECOMMENDATIONS_01", null
+            ));    // Return
+        }
+
+        // TODO: Implement me !
+
+        var sql_stmt = "";
+        conn.query(sql_stmt, function(err, rows) {    // func_02
+            if (err) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_DB_SELECT_ERR + err,
+                    "E_POST_GET_RECOMMENDATIONS_02",
+                    sql_stmt
+                ));    // Return
+            }
+
+            conn.release();
+            // Product recommendations have been selected.
+            return res.json({
+                product_list : rows
+            });
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
 // Sandbox: A place to test or experiment various capabilities.
 
 function db_insert_user(user) {
