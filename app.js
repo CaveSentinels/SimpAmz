@@ -267,7 +267,7 @@ app.post('/unregisterUser', function(req, res) {
             return res.status(500).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
-                "E_POST_MODIFY_PROD_01", null
+                "E_POST_UNREG_USER_01", null
             ));    // Return
         }
 
@@ -282,7 +282,7 @@ app.post('/unregisterUser', function(req, res) {
                 return res.status(500).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
-                    "E_POST_MODIFY_PROD_02",
+                    "E_POST_UNREG_USER_02",
                     sql_stmt
                 ));    // Return
             } else {
@@ -292,7 +292,7 @@ app.post('/unregisterUser', function(req, res) {
                     return res.status(401).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
-                        "E_POST_MODIFY_PROD_03",
+                        "E_POST_UNREG_USER_03",
                         null
                     ));
                 } else {
@@ -313,7 +313,7 @@ app.post('/unregisterUser', function(req, res) {
             // TODO: Check if the session expires. If yes, return error;
             // if not, update the last login time.
 
-            sql_stmt = "DELETE FROM `UserContact` WHERE `UserID` = " + conn.escape(session_info.uid);
+            sql_stmt = "DELETE FROM `User` WHERE `ID` = " + conn.escape(session_info.uid);
 
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
@@ -321,30 +321,16 @@ app.post('/unregisterUser', function(req, res) {
                     return res.status(500).json(ret_value(
                         failure_msg_base,
                         ERR_MSG_DB_DELETE_ERR + err,
-                        "E_POST_UNREG_USER_03", null
+                        "E_POST_UNREG_USER_04", null
                     ));
                 }
 
-                // User info has been deleted. Now delete the contact info.
-                sql_stmt = "DELETE FROM `User` WHERE `ID` = " + conn.escape(session_info.uid);
-
-                conn.query(sql_stmt, function(err, result) {    // func_04
-                    if (err) {
-                        conn.release();
-                        return res.status(500).json(ret_value(
-                            failure_msg_base,
-                            ERR_MSG_DB_DELETE_ERR + err,
-                            "E_POST_UNREG_USER_04", null
-                        ));
-                    }
-
-                    // Deletion succeeded.
-                    conn.release();
-                    return res.json(ret_value(
-                        success_msg_base,
-                        null, null, null
-                    ));
-                }); // func_04
+                // Deletion succeeded.
+                conn.release();
+                return res.json(ret_value(
+                    success_msg_base,
+                    null, null, null
+                ));
             }); // func_03
         }); // func_02
     }); // func_01
