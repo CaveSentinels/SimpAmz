@@ -355,7 +355,7 @@ app.post('/login', function(req, res) {
             );
             ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
-            ret["sessionID"] = "";
+            res.cookie("sessionID", "");
             return res.status(500).json(ret);
         }
 
@@ -374,7 +374,7 @@ app.post('/login', function(req, res) {
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
-                ret["sessionID"] = "";
+                res.cookie("sessionID", "");
                 return res.status(500).json(ret);
             }
 
@@ -388,7 +388,7 @@ app.post('/login', function(req, res) {
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
-                ret["sessionID"] = "";
+                res.cookie("sessionID", "");
                 return res.status(500).json(ret);
             }
 
@@ -401,7 +401,7 @@ app.post('/login', function(req, res) {
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
-                ret["sessionID"] = "";
+                res.cookie("sessionID", "");
                 return res.status(401).json(ret);
             }
 
@@ -438,7 +438,7 @@ app.post('/login', function(req, res) {
                         );
                         ret["err_message"] = "";
                         ret["menu"] = menu_list;
-                        ret["sessionID"] = session_info.sid;
+                        res.cookie("sessionID", session_info.sid);
                         return res.json(ret);
                     }
                 }); // func_03
@@ -452,7 +452,7 @@ app.post('/login', function(req, res) {
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
-                ret["sessionID"] = "";
+                res.cookie("sessionID", "");
                 return res.status(500).json(ret);
             }
         }); // Func_02
@@ -466,7 +466,7 @@ app.post('/login', function(req, res) {
             );
             ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
-            ret["sessionID"] = "";
+            res.cookie("sessionID", "");
             return res.status(500).json(ret);
         }); // Func_03
     }); // Func_01
@@ -479,7 +479,7 @@ app.post('/logout', function(req, res) {
     var success_msg_base = "You have been logged out";
     var failure_msg_base = "You are not currently logged in";
 
-    var sessionID = emptize(req.body.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     // Try to delete the session directly.
     pool.getConnection(function(err, conn) {    // func_01
@@ -542,7 +542,7 @@ app.post('/updateInfo', function(req, res) {
     var success_msg_base = "Your information has been updated";
 
     // Authenticate the user
-    var sessionID = emptize(req.body.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
@@ -685,7 +685,7 @@ app.post('/modifyProduct', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
 
     // Authenticate the user
-    var sessionID = emptize(req.body.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
@@ -807,7 +807,7 @@ app.get('/viewUsers', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
 
     // Authenticate the user
-    var sessionID = emptize(req.query.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
@@ -973,7 +973,7 @@ app.post('/buyProduct', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
 
     // Authenticate the user
-    var sessionID = emptize(req.body.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
@@ -1102,7 +1102,7 @@ app.get('/getOrders', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
 
     // Authenticate the user
-    var sessionID = emptize(req.query.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
@@ -1192,7 +1192,7 @@ app.post('/alsoBought', function(req, res) {
     var failure_msg_base = "02 there was a problem processing the request";
 
     // Authenticate the user
-    var sessionID = emptize(req.body.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
