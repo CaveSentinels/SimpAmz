@@ -1326,7 +1326,7 @@ function get_recommendations(prod_id, rows) {
     });
 
     var recommendations = [];
-    for (var i = 0; i < 5; ++i) {
+    for (var i = 0; i < 5 && i < sorted_items.length; ++i) {
         recommendations.push(sorted_items[i][0]);
     }
 
