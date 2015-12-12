@@ -32,6 +32,23 @@ Follow the steps below to start the web service:
 
 Import the db_create.sql into MySQL to create the database and its tables.
 
+### User Data Import
+
+Follow the steps below to import the user data:
+
+1. Start the web service and make sure it connects to the database correctly.
+2. Put ```UserData5000.csv``` under the ```db``` folder. Make sure the file name is exactly "UserData5000.csv".
+3. Open a browser, enter ```http://<Web service DNS>:3000/admin/load_users```. For example, if you start your web service in the local machine, then type ```http://localhost:3000/sandbox/load_users```.
+4. The web service will read the user data from "UserData5000.csv" under the ```db``` folder and write them to the database. This may take a few minutes and the browser may show a not-respond error page. When the data are all loaded, a summary message will be printed in the web service's console window:
+
+Completion message:
+
+	==============================
+    Data import completed:
+    Total: 5000 user(s)
+    Error: 0 user(s)
+    ==============================
+
 
 ### Product Data Import
 
@@ -39,13 +56,13 @@ Follow the steps below to import the product data:
 
 1. Start the web service and make sure it connects to the database correctly.
 2. Put ```amazon-meta.txt``` under the same folder with app.js. Make sure the file name is exactly "amazon-meta.txt".
-3. Open a browser, enter ```http://<Web service DNS>:3000/sandbox/load_data?source=amazon-meta```. For example, if you start your web service in the local machine, then type ```http://localhost:3000/sandbox/load_data?source=amazon-meta```.
-4. The web service will read the product data from "amazon-meta.txt" and write them to database. This may take some minutes and the browser may show a not-respond error page. When the data are all loaded, a summary message will be printed in the web service's console window:
+3. Open a browser, enter ```http://<Web service DNS>:3000/admin/load_data?source=amazon-meta```. For example, if you start your web service in the local machine, then type ```http://localhost:3000/sandbox/load_data?source=amazon-meta```.
+4. The web service will read the product data from "amazon-meta.txt" and write them to the database. This may take a few minutes and the browser may show a not-respond error page. When the data are all loaded, a summary message will be printed in the web service's console window:
 
 Completion message:
 
 	==============================
     Data import completed:
-    Total: 50000 record(s)
-    Error: 0 record(s)
+    Total: 50000 product(s)
+    Error: 0 product(s)
     ==============================

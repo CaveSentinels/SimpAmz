@@ -22,13 +22,6 @@ var app = express();
 
 // ============================================================================
 
-var valid_state_abbr = [
-    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
-    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
-    "VA","WA","WV","WI","WY"
-];
-
 // Do not use the "g" flag if you don't want to reset the index.
 // See this post for more info:
 // http://stackoverflow.com/a/1520853/630364
@@ -37,7 +30,7 @@ var zip_code_pattern = /^\d{5}$/;
 // The email address regex pattern is found here:
 // http://stackoverflow.com/a/1373724/630364
 // God knows how the IETF guys figured out such a complex pattern...
-var email_pattern = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
+var email_pattern = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
 
 // ============================================================================
 
@@ -59,11 +52,12 @@ var ERR_MSG_DB_DELETE_ERR = "Database DELETE error: ";
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
-// uncomment after placing your favicon in /public
-//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+// Favicon
+app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+
 app.use(logger('dev'));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -172,26 +166,14 @@ app.post("/registerUser", function(req, res) {
     var pwd = req.body.password;
     var role = req.body.role;
 
-    // Validate parameter: state
-    if (state) {
-        if (valid_state_abbr.indexOf(state.toUpperCase()) == -1) {
-            // Meaning that state's value is not a valid state abbreviation.
-            return res.json(ret_value(
-                failure_msg_base,
-                "Invalid state abbreviation: " + state,
-                "E_POST_REG_USER_01", null
-            )); // Return
-        }
-    }
-
     // Validate parameter: zip code.
     if (zip) {
         if (!zip_code_pattern.test(zip)) {
             // Meaning that zip's value is not a 5-digit zip code.
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Invalid zip code: " + zip,
-                "E_POST_REG_USER_02", null
+                "E_POST_REG_USER_01", null
             ));    // Return
         }
     }
@@ -201,10 +183,10 @@ app.post("/registerUser", function(req, res) {
     if (email) {
         if (!email_pattern.test(email)) {
             // Meaning that email's value is not a valid email address.
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Invalid email format: " + email,
-                "E_POST_REG_USER_03", null
+                "E_POST_REG_USER_02", null
             ));    // Return
         }
     }
@@ -212,20 +194,20 @@ app.post("/registerUser", function(req, res) {
     // Validate parameter: user name must not be empty and must not exist.
     if (!uname || uname == "") {
         // Meaning that uname is empty, which is not allowed.
-        return res.json(ret_value(
+        return res.status(400).json(ret_value(
             failure_msg_base,
             "User name must not be empty.",
-            "E_POST_REG_USER_05", null
+            "E_POST_REG_USER_03", null
         ));    // Return
     }
 
     // Validate parameter: password must not be empty and must not exist.
     if (!pwd || pwd == "") {
         // Meaning that pwd is empty, which is not allowed.
-        return res.json(ret_value(
+        return res.status(400).json(ret_value(
             failure_msg_base,
             "Password must not be empty.",
-            "E_POST_REG_USER_06", null
+            "E_POST_REG_USER_04", null
         ));    // Return
     }
 
@@ -238,79 +220,34 @@ app.post("/registerUser", function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(500).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
-                "E_POST_REG_USER_04", null
+                "E_POST_REG_USER_05", null
             ));    // Return
         }
 
-        var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" + _Q(uname);
-        conn.query(sql_stmt, function(err, rows) {    // func_02
+        var sql_stmt = "INSERT INTO `User` (`FName`, `LName`, `Addr`, `City`, `State`, `Zip`, `Email`, `UName`, `Password`, `Role`) VALUES (" +
+            _Q(fname) + ", " + _Q(lname) + ", " + _Q(addr) + ", " + _Q(city) + ", " +
+            _Q(state) + ", " + _Q(zip) + ", " + _Q(email) + ", " + _Q(uname) + ", " +
+            _Q(pwd) + ", " + _Q(role) + ")";
+        conn.query(sql_stmt, function(err, result) {    // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     failure_msg_base,
-                    "Database QUERY error: " + err,
-                    "E_POST_REG_USER_07",
+                    "Database INSERT INTO error: " + err,
+                    "E_POST_REG_USER_06",
                     sql_stmt
                 ));    // Return
             } else {
-                if (rows.length > 0) {
-                    conn.release();
-                    return res.json(ret_value(
-                        failure_msg_base,
-                        "User name already exists: " + uname,
-                        "E_POST_REG_USER_08",
-                        null
-                    ));    // Return
-                }
+                conn.release();
+                // OK. Finally we've done everything.
+                // Return success.
+                return res.json(ret_value(
+                    success_msg_base, null, null, null
+                ));    // Return
             }
-
-            // Now we know that the uname doesn't exist. We can create
-            // the user account.
-            sql_stmt = "INSERT INTO User (Name, Password, Role) VALUES (" +
-                _Q(uname) + ", " + _Q(pwd) + ", " + _Q(role) + ")";
-            conn.query(sql_stmt, function(err, result) {    // func_03
-                if (err) {
-                    conn.release();
-                    return res.json(ret_value(
-                        failure_msg_base,
-                        "Database INSERT INTO error: " + err,
-                        "E_POST_REG_USER_09",
-                        sql_stmt
-                    ));    // Return
-                } else {
-                    var uid = result.insertId;
-                    // Insert the contact information.
-                    // It is possible that the user doesn't provide any
-                    // contact information. In this case, we just Insert
-                    // an empty row in the database.
-                    sql_stmt = "INSERT INTO UserContact " +
-                        "(FName, LName, Addr, City, State, Zip, Email, UserID) " +
-                        "VALUES (" + _Q(fname) + ", " + _Q(lname) + ", " +
-                        _Q(addr) + ", " + _Q(city) + ", " + _Q(state) + ", " +
-                        _Q(zip) + ", " + _Q(email) + ", " + _Q(uid) + ")";
-                    conn.query(sql_stmt, function(err, result) {    // func_04
-                        if (err) {
-                            conn.release();
-                            return res.json(ret_value(
-                                failure_msg_base,
-                                "Database INSERT INTO error: " + err,
-                                "E_POST_REG_USER_10",
-                                sql_stmt
-                            ));    // Return
-                        } else {
-                            conn.release();
-                            // OK. Finally we've done everything.
-                            // Return success.
-                            return res.json(ret_value(
-                                success_msg_base, null, null, null
-                            ));    // Return
-                        }
-                    }); // func_04
-                }
-            }); // func_03
         }); // func_02
     }); // func_01
 });
@@ -327,10 +264,10 @@ app.post('/unregisterUser', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(500).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
-                "E_POST_MODIFY_PROD_01", null
+                "E_POST_UNREG_USER_01", null
             ));    // Return
         }
 
@@ -342,20 +279,20 @@ app.post('/unregisterUser', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
-                    "E_POST_MODIFY_PROD_02",
+                    "E_POST_UNREG_USER_02",
                     sql_stmt
                 ));    // Return
             } else {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(401).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
-                        "E_POST_MODIFY_PROD_03",
+                        "E_POST_UNREG_USER_03",
                         null
                     ));
                 } else {
@@ -376,38 +313,24 @@ app.post('/unregisterUser', function(req, res) {
             // TODO: Check if the session expires. If yes, return error;
             // if not, update the last login time.
 
-            sql_stmt = "DELETE FROM `UserContact` WHERE `UserID` = " + conn.escape(session_info.uid);
+            sql_stmt = "DELETE FROM `User` WHERE `ID` = " + conn.escape(session_info.uid);
 
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(500).json(ret_value(
                         failure_msg_base,
                         ERR_MSG_DB_DELETE_ERR + err,
-                        "E_POST_UNREG_USER_03", null
+                        "E_POST_UNREG_USER_04", null
                     ));
                 }
 
-                // User info has been deleted. Now delete the contact info.
-                sql_stmt = "DELETE FROM `User` WHERE `ID` = " + conn.escape(session_info.uid);
-
-                conn.query(sql_stmt, function(err, result) {    // func_04
-                    if (err) {
-                        conn.release();
-                        return res.status(500).json(ret_value(
-                            failure_msg_base,
-                            ERR_MSG_DB_DELETE_ERR + err,
-                            "E_POST_UNREG_USER_04", null
-                        ));
-                    }
-
-                    // Deletion succeeded.
-                    conn.release();
-                    return res.json(ret_value(
-                        success_msg_base,
-                        null, null, null
-                    ));
-                }); // func_04
+                // Deletion succeeded.
+                conn.release();
+                return res.json(ret_value(
+                    success_msg_base,
+                    null, null, null
+                ));
             }); // func_03
         }); // func_02
     }); // func_01
@@ -432,11 +355,11 @@ app.post('/login', function(req, res) {
             );
             ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
-            ret["sessionID"] = "";
-            return res.json(ret);
+            res.cookie("sessionID", "");
+            return res.status(500).json(ret);
         }
 
-        var sql_stmt = "SELECT * FROM `User` WHERE `Name`=" +
+        var sql_stmt = "SELECT * FROM `User` WHERE `UName`=" +
             conn.escape(username) + " AND `Password`=" +
             conn.escape(password) + "";
 
@@ -451,8 +374,8 @@ app.post('/login', function(req, res) {
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
-                ret["sessionID"] = "";
-                return res.json(ret);
+                res.cookie("sessionID", "");
+                return res.status(500).json(ret);
             }
 
             if (rows.length > 1) {
@@ -465,8 +388,8 @@ app.post('/login', function(req, res) {
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
-                ret["sessionID"] = "";
-                return res.json(ret);
+                res.cookie("sessionID", "");
+                return res.status(500).json(ret);
             }
 
             if (rows.length == 0) {
@@ -478,8 +401,8 @@ app.post('/login', function(req, res) {
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
-                ret["sessionID"] = "";
-                return res.json(ret);
+                res.cookie("sessionID", "");
+                return res.status(401).json(ret);
             }
 
             if (rows.length == 1) {
@@ -493,7 +416,7 @@ app.post('/login', function(req, res) {
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
                         conn.release();
-                        return res.json(ret_value(
+                        return res.status(500).json(ret_value(
                             failure_msg_base,
                             "Database INSERT INTO error: " + err,
                             "E_POST_LOGIN_05",
@@ -515,7 +438,7 @@ app.post('/login', function(req, res) {
                         );
                         ret["err_message"] = "";
                         ret["menu"] = menu_list;
-                        ret["sessionID"] = session_info.sid;
+                        res.cookie("sessionID", session_info.sid);
                         return res.json(ret);
                     }
                 }); // func_03
@@ -529,8 +452,8 @@ app.post('/login', function(req, res) {
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
-                ret["sessionID"] = "";
-                return res.json(ret);
+                res.cookie("sessionID", "");
+                return res.status(500).json(ret);
             }
         }); // Func_02
 
@@ -543,8 +466,8 @@ app.post('/login', function(req, res) {
             );
             ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
-            ret["sessionID"] = "";
-            return res.json(ret);
+            res.cookie("sessionID", "");
+            return res.status(500).json(ret);
         }); // Func_03
     }); // Func_01
 });
@@ -556,12 +479,12 @@ app.post('/logout', function(req, res) {
     var success_msg_base = "You have been logged out";
     var failure_msg_base = "You are not currently logged in";
 
-    var sessionID = emptize(req.body.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     // Try to delete the session directly.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(500).json(ret_value(
                 "Database connection error: ",
                 err, "E_POST_LOGOUT_01", null
             ));    // Return
@@ -571,7 +494,7 @@ app.post('/logout', function(req, res) {
         conn.query(sql_stmt, function(err, result) {    // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     "Database DELETE error: ",
                     err, "E_POST_LOGOUT_02",
                     sql_stmt
@@ -581,7 +504,7 @@ app.post('/logout', function(req, res) {
                     conn.release();
                     // If the number of affected rows is 0, that means this
                     // session didn't exist before.
-                    return res.json(ret_value(
+                    return res.status(500).json(ret_value(
                         failure_msg_base,
                         null, "E_POST_LOGOUT_03",
                         sql_stmt
@@ -614,54 +537,16 @@ app.post('/logout', function(req, res) {
 // ============================================================================
 // Update Contact Information
 
-function db_update_user(conn, user_info, res) {
-    var failure_msg_base = "There was a problem with this action";
-    var success_msg_base = "Your information has been updated";
-
-    var assignments =
-        sql_set_field_value(conn, "Name", user_info.uname, ",") +
-        sql_set_field_value(conn, "Password", user_info.pwd, "")
-        ;
-
-    if (assignments != "") {
-        // Only update the User table when there is something to update.
-        var sql_stmt = "UPDATE `User` SET "+ assignments +
-            " WHERE `ID`=" + conn.escape(user_info.id);
-        conn.query(sql_stmt, function(err, result) {    // func_02
-            if (err) {
-                // conn will be released in the caller.
-                return res.json(ret_value(
-                    failure_msg_base,
-                    "Database UPDATE error: " + err,
-                    "E_POST_UPDATE_INFO_06",
-                    sql_stmt
-                ));    // Return
-            } else {
-                // OK. Finally we've done everything.
-                // Return success.
-                // conn will be released in the caller.
-                return res.json(ret_value(
-                    success_msg_base, null, null, null
-                ));    // Return
-            }
-        }); // func_02
-    } else {
-        // Nothing to update. Return empty.
-        // conn will be released in the caller.
-        return res.json(ret_value(success_msg_base, null, null, null));
-    }
-}
-
 app.post('/updateInfo', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
     var success_msg_base = "Your information has been updated";
 
     // Authenticate the user
-    var sessionID = emptize(req.body.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(500).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_UPDATE_INFO_01", null
@@ -676,7 +561,7 @@ app.post('/updateInfo', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(500).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_POST_UPDATE_INFO_02",
@@ -686,7 +571,7 @@ app.post('/updateInfo', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(401).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_POST_UPDATE_INFO_03",
@@ -726,28 +611,15 @@ app.post('/updateInfo', function(req, res) {
                 pwd : req.body.password
             };
 
-            // Validate parameter: state
-            if (user_info.state) {
-                if (valid_state_abbr.indexOf(user_info.state.toUpperCase()) == -1) {
-                    conn.release();
-                    // Meaning that state's value is not a valid state abbreviation.
-                    return res.json(ret_value(
-                        failure_msg_base,
-                        "Invalid state abbreviation: " + user_info.state,
-                        "E_POST_UPDATE_INFO_02", null
-                    )); // Return
-                }
-            }
-
             // Validate parameter: zip code.
             if (user_info.zip) {
                 if (!zip_code_pattern.test(user_info.zip)) {
                     conn.release();
                     // Meaning that zip's value is not a 5-digit zip code.
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Invalid zip code: " + user_info.zip,
-                        "E_POST_UPDATE_INFO_03", null
+                        "E_POST_UPDATE_INFO_04", null
                     ));    // Return
                 }
             }
@@ -758,50 +630,48 @@ app.post('/updateInfo', function(req, res) {
                 if (!email_pattern.test(user_info.email)) {
                     conn.release();
                     // Meaning that email's value is not a valid email address.
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Invalid email format: " + user_info.email,
-                        "E_POST_UPDATE_INFO_04", null
+                        "E_POST_UPDATE_INFO_05", null
                     ));    // Return
                 }
             }
 
             // Create the value assignments in the SET part.
-            var assignments = sql_set_field_value(conn, "fName", user_info.fname, ",") +
-                sql_set_field_value(conn, "lName", user_info.lname, ",") +
-                sql_set_field_value(conn, "addr", user_info.addr, ",") +
-                sql_set_field_value(conn, "city", user_info.city, ",") +
-                sql_set_field_value(conn, "state", user_info.state, ",") +
-                sql_set_field_value(conn, "zip", user_info.zip, ",") +
-                sql_set_field_value(conn, "email", user_info.email, "")
+            var assignments =
+                sql_set_field_value(conn, "FName", user_info.fname, ",") +
+                sql_set_field_value(conn, "LName", user_info.lname, ",") +
+                sql_set_field_value(conn, "Addr", user_info.addr, ",") +
+                sql_set_field_value(conn, "City", user_info.city, ",") +
+                sql_set_field_value(conn, "State", user_info.state, ",") +
+                sql_set_field_value(conn, "Zip", user_info.zip, ",") +
+                sql_set_field_value(conn, "Email", user_info.email, ",") +
+                sql_set_field_value(conn, "UName", user_info.uname, ",") +
+                sql_set_field_value(conn, "Password", user_info.pwd, "")
                 ;
 
             if (assignments != "") {
                 // Only update the UserContact table when there is something to update.
-                sql_stmt = "UPDATE `UserContact` SET "+ assignments +
-                    " WHERE `UserID`=" + conn.escape(user_info.id);
+                sql_stmt = "UPDATE `User` SET "+ assignments +
+                    " WHERE `ID`=" + conn.escape(user_info.id);
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
                         conn.release();
-                        return res.json(ret_value(
+                        return res.status(400).json(ret_value(
                             failure_msg_base,
                             "Database UPDATE error: " + err,
                             "E_POST_UPDATE_INFO_06",
                             sql_stmt
                         ));    // Return
                     } else {
-                        // Update the User table.
-                        var rv = db_update_user(conn, user_info, res);
                         conn.release();
-                        return rv;
+                        return res.json(ret_value(success_msg_base, null, null, null));
                     }
                 }); // func_03
             } else {
-                // If there is nothing to update to the UserContact table,
-                // then only update the User table.
-                var rv = db_update_user(conn, user_info, res);
                 conn.release();
-                return rv;
+                return res.json(ret_value(success_msg_base, null, null, null));
             }
         }); // func_02
     }); // func_01
@@ -815,11 +685,11 @@ app.post('/modifyProduct', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
 
     // Authenticate the user
-    var sessionID = emptize(req.body.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_MODIFY_PROD_01", null
@@ -834,7 +704,7 @@ app.post('/modifyProduct', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_POST_MODIFY_PROD_02",
@@ -844,7 +714,7 @@ app.post('/modifyProduct', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_POST_MODIFY_PROD_03",
@@ -870,7 +740,7 @@ app.post('/modifyProduct', function(req, res) {
 
             if (session_info.role != USER_ROLE_ADMIN) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_AUTH_FAILURE + "Only admin can modify product information.",
                     "E_POST_MODIFY_PROD_04", null
@@ -886,7 +756,7 @@ app.post('/modifyProduct', function(req, res) {
             // ID must be provided.
             if (_NUE(prod_info.id)) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_PARAM + "productId must not be empty.",
                     "E_POST_MODIFY_PROD_05", null
@@ -911,7 +781,7 @@ app.post('/modifyProduct', function(req, res) {
             conn.query(sql_stmt, function(err, result) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Database UPDATE error: " + err,
                         "E_POST_MODIFY_PROD_06",
@@ -937,11 +807,11 @@ app.get('/viewUsers', function(req, res) {
     var failure_msg_base = "There was a problem with this action";
 
     // Authenticate the user
-    var sessionID = emptize(req.query.sessionID);
+    var sessionID = emptize(req.cookies.sessionID);
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_GET_VIEW_USER_01", null
@@ -956,7 +826,7 @@ app.get('/viewUsers', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_GET_VIEW_USER_02",
@@ -966,7 +836,7 @@ app.get('/viewUsers', function(req, res) {
                 if (rows.length < 1) {
                     conn.release();
                     // Not authenticated
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_GET_VIEW_USER_03",
@@ -993,7 +863,7 @@ app.get('/viewUsers', function(req, res) {
             // Check if the user is an admin.
             if (session_info.role != USER_ROLE_ADMIN) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_AUTH_FAILURE + "Only admin can view users' information.",
                     "E_GET_VIEW_USER_04", null
@@ -1014,15 +884,14 @@ app.get('/viewUsers', function(req, res) {
             //     "WHERE UserContact.FName LIKE '%" + fname + "%' OR UserContact.LName LIKE '%" + lname + "%'";
             //     ;
 
-            var sql_stmt = "SELECT User.ID, User.Name, UserContact.FName, UserContact.LName " +
-                "FROM User INNER JOIN UserContact ON User.ID = UserContact.UserID " +
-                "WHERE UserContact.FName LIKE '%" + fname + "%' AND UserContact.LName LIKE '%" + lname + "%'";
+            var sql_stmt = "SELECT User.ID, User.UName, User.FName, User.LName " +
+                "FROM User WHERE User.FName LIKE '%" + fname + "%' AND User.LName LIKE '%" + lname + "%'";
                 ;
 
             conn.query(sql_stmt, function(err, rows) {    // func_03
                 if (err) {
                     conn.release();
-                    return res.json(ret_value(
+                    return res.status(400).json(ret_value(
                         failure_msg_base,
                         ERR_MSG_DB_SELECT_ERR + err,
                         "E_GET_VIEW_USER_05",
@@ -1055,7 +924,7 @@ app.get('/getProducts', function(req, res) {
     // Find the product information from the database.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.json(ret_value(
+            return res.status(400).json(ret_value(
                 failure_msg_base,
                 ERR_MSG_DB_CONN_ERR + err,
                 "E_GET_VIEW_PROD_01", null
@@ -1079,7 +948,7 @@ app.get('/getProducts', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {    // func_02
             if (err) {
                 conn.release();
-                return res.json(ret_value(
+                return res.status(400).json(ret_value(
                     failure_msg_base,
                     ERR_MSG_DB_SELECT_ERR + err,
                     "E_GET_VIEW_PROD_02",
@@ -1097,7 +966,491 @@ app.get('/getProducts', function(req, res) {
 });
 
 // ============================================================================
+// Purchase a product
+
+app.post('/buyProduct', function(req, res) {
+    var success_msg_base = "01 the purchase has been made successfully";
+    var failure_msg_base = "There was a problem with this action";
+
+    // Authenticate the user
+    var sessionID = emptize(req.cookies.sessionID);
+
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.status(400).json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_BUY_PROD_01", null
+            ));    // Return
+        }
+
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
+            if (err) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    "Database SELECT error: " + err,
+                    "E_POST_BUY_PROD_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    conn.release();
+                    // Not authenticated
+                    return res.status(400).json(ret_value(
+                        failure_msg_base,
+                        "02 you need to log in prior to buying a product",
+                        "E_POST_BUY_PROD_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
+            }
+
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            var prod_info = {
+                id : req.body.productId,
+                quantity : 1    // Default value
+            };
+
+            // ID must be provided.
+            if (_NUE(prod_info.id)) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_PARAM + "productId must not be empty.",
+                    "E_POST_BUY_PROD_04", null
+                ));
+            }
+
+            var sql_stmt = "UPDATE `Inventory` SET " +
+                "`Quantity` = `Quantity` - " + prod_info.quantity +
+                " WHERE `ProdID` = " + prod_info.id + " AND `Quantity` > 0"
+                ;
+
+            conn.query(sql_stmt, function(err, result) {    // func_03
+                if (err) {
+                    conn.release();
+                    return res.status(400).json(ret_value(
+                        failure_msg_base,
+                        "Database UPDATE error: " + err,
+                        "E_POST_BUY_PROD_05",
+                        sql_stmt
+                    ));    // Return
+                }
+
+                if (result.affectedRows == 0) {
+                    // Either the ID is wrong or the quantity is already 0.
+                    conn.release();
+                    return res.status(400).json(ret_value(
+                        failure_msg_base,
+                        "03 that product is out of stock",
+                        "E_POST_BUY_PROD_06",
+                        sql_stmt
+                    ));     // Return
+                }
+
+                // Insert the order info.
+                sql_stmt = "INSERT INTO `Order` (`ProdID`, `Quantity`) VALUES (" +
+                    prod_info.id + ", " + prod_info.quantity + ")";
+
+                conn.query(sql_stmt, function(err, result) {    // func_04
+                    if (err) {
+                        conn.release();
+                        return res.status(400).json(ret_value(
+                            failure_msg_base,
+                            "Database INSERT error: " + err,
+                            "E_POST_BUY_PROD_08",
+                            sql_stmt
+                        ));    // Return
+                    }
+
+                    conn.release();
+                    // Inventory info update succeeded.
+                    return res.json(ret_value(
+                        success_msg_base,
+                        null, null, null
+                    ));
+                }); // func_04
+            }); // func_03
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
+// Get orders
+
+app.get('/getOrders', function(req, res) {
+    var failure_msg_base = "There was a problem with this action";
+
+    // Authenticate the user
+    var sessionID = emptize(req.cookies.sessionID);
+
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.status(400).json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_GET_ORDERS_01", null
+            ));    // Return
+        }
+
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
+            if (err) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    "Database SELECT error: " + err,
+                    "E_GET_ORDERS_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    conn.release();
+                    // Not authenticated
+                    return res.status(400).json(ret_value(
+                        failure_msg_base,
+                        "Not authenticated.",
+                        "E_GET_ORDERS_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
+            }
+
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            var sql_stmt = "SELECT `ProdID`, `Quantity` FROM `Order`";
+
+            conn.query(sql_stmt, function(err, rows) {    // func_03
+                if (err) {
+                    conn.release();
+                    return res.status(400).json(ret_value(
+                        failure_msg_base,
+                        ERR_MSG_DB_SELECT_ERR + err,
+                        "E_GET_ORDERS_04",
+                        sql_stmt
+                    ));    // Return
+                }
+
+                // Create the order list.
+                var order_list = [];
+                for (i = 0; i < rows.length; i++) {
+                    order_list.push({
+                        productId : rows[i].ProdID,
+                        quantitySold : rows[i].Quantity
+                    });
+                }
+
+                conn.release();
+                return res.json(order_list);
+            }); // func_03
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
+// Add AlsoBought info.
+
+app.post('/alsoBought', function(req, res) {
+    var success_msg_base = "01 the request was successful";
+    var failure_msg_base = "02 there was a problem processing the request";
+
+    // Authenticate the user
+    var sessionID = emptize(req.cookies.sessionID);
+
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.status(400).json(ret_value(
+                failure_msg_base,
+                "Database connection error: " + err,
+                "E_POST_ALSO_BOUGHT_01", null
+            ));    // Return
+        }
+
+        var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
+                       "INNER JOIN Session " +
+                       "ON User.ID = Session.UserID " +
+                       "WHERE Session.SessionID = " + _Q(sessionID);
+        var session_info = null;    // Will retrieve the info later.
+        conn.query(sql_stmt, function(err, rows) {  // func_02
+            if (err) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    "Database SELECT error: " + err,
+                    "E_POST_ALSO_BOUGHT_02",
+                    sql_stmt
+                ));    // Return
+            } else {
+                if (rows.length < 1) {
+                    conn.release();
+                    // Not authenticated
+                    return res.status(400).json(ret_value(
+                        failure_msg_base,
+                        "Not authenticated.",
+                        "E_POST_ALSO_BOUGHT_03",
+                        null
+                    ));
+                } else {
+                    // The case that rows.length > 1 should never happen
+                    // because the session ID is unique in the database.
+                    // In case it happens, we just assume the user has logged
+                    // in successfully.
+                    //
+                    // Need to retrieve the user information.
+                    session_info = {
+                        uid : rows[0].ID,
+                        role : rows[0].Role,
+                        lastLogin : rows[0].LastLogin
+                    };
+                }
+            }
+
+            // TODO: Check if the session expires. If yes, return error;
+            // if not, update the last login time.
+
+            if (session_info.role != USER_ROLE_ADMIN) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_AUTH_FAILURE + "Only admin can add also-bought information.",
+                    "E_POST_ALSO_BOUGHT_04", null
+                ));
+            }
+
+            var prod_1_id = req.body.productId1;
+            var prod_2_id = req.body.productId2;
+
+            // ID must be provided.
+            if (_NUE(prod_1_id) || _NUE(prod_2_id)) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_PARAM + "productId1 and productId2 must not be empty.",
+                    "E_POST_ALSO_BOUGHT_05", null
+                ));
+            }
+
+            var sql_stmt = "INSERT INTO `AlsoBought` (`Bought`, `AlsoBought`) VALUES (" +
+                _Q(prod_1_id) + ", " + _Q(prod_2_id) + ")";
+            conn.query(sql_stmt, function(err, result) {    // func_03
+                if (err) {
+                    conn.release();
+                    return res.status(500).json(ret_value(
+                        failure_msg_base,
+                        "Database INSERT INTO error: " + err,
+                        "E_POST_ALSO_BOUGHT_06",
+                        sql_stmt
+                    ));    // Return
+                } else {
+                    conn.release();
+                    // OK. Finally we've done everything.
+                    // Return success.
+                    return res.json(ret_value(
+                        success_msg_base, null, null, null
+                    ));    // Return
+                }
+            }); // func_03
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
+// Get Recommendations
+
+var recommendation_cache = {};
+
+function get_recommendations(prod_id, rows) {
+    var related = {};
+    var item_id = null;
+    for (var i = 0; i < rows.length; ++i) {
+        if (rows[i].AlsoBought == prod_id) {
+            item_id = rows[i].Bought;
+        } else {
+            item_id = rows[i].AlsoBought;
+        }
+
+        if (related[item_id] != null) {
+            related[item_id] += 1;
+        } else {
+            related[item_id] = 1;
+        }
+    }
+
+    var sorted_items = Object.keys(related).map(function(key) {
+        return [key, related[key]];
+    });
+
+    sorted_items.sort(function(first, second) {
+        if (second[1] - first[1] == 0) {
+            return second[0] - first[0];
+        }
+
+        return second[1] - first[1];
+    });
+
+    var recommendations = [];
+    for (var i = 0; i < 5 && i < sorted_items.length; ++i) {
+        recommendations.push(sorted_items[i][0]);
+    }
+
+    return recommendations;
+}
+
+app.post('/getRecommendations', function(req, res) {
+    var success_msg_base = "01 the request was successful";
+    var failure_msg_base = "02 there was a problem processing the request";
+
+    // Get Recommendations does not require the user to log in.
+
+    var prod_id = emptize(req.body.productId);
+
+    if (recommendation_cache[prod_id] != null) {
+        // If the recommendations can be found in the cache,
+        // then return them directly.
+        return res.json({
+            "relatedProducts:" : recommendation_cache[prod_id]
+        });
+    }
+
+    // Get the product recommendations from the database.
+    pool.getConnection(function(err, conn) {    // func_01
+        if (err) {
+            return res.status(400).json(ret_value(
+                failure_msg_base,
+                ERR_MSG_DB_CONN_ERR + err,
+                "E_POST_GET_RECOMMENDATIONS_01", null
+            ));    // Return
+        }
+
+        var sql_stmt = "SELECT * FROM `AlsoBought` WHERE `Bought` = " +
+            prod_id + " OR `AlsoBought` = " + prod_id;
+        conn.query(sql_stmt, function(err, rows) {    // func_02
+            if (err) {
+                conn.release();
+                return res.status(400).json(ret_value(
+                    failure_msg_base,
+                    ERR_MSG_DB_SELECT_ERR + err,
+                    "E_POST_GET_RECOMMENDATIONS_02",
+                    sql_stmt
+                ));    // Return
+            }
+
+            var recommendations = get_recommendations(prod_id, rows);
+
+            // Add to cache.
+            recommendation_cache[prod_id] = recommendations;
+
+            conn.release();
+            // Product recommendations have been selected.
+            return res.json({
+                "relatedProducts:" : recommendations
+            });
+        }); // func_02
+    }); // func_01
+});
+
+// ============================================================================
 // Sandbox: A place to test or experiment various capabilities.
+
+function db_insert_user(user) {
+    // Insert user information.
+    var sql_stmt = "INSERT INTO `User` (`FName`, `LName`, `Addr`, `City`, `State`, `Zip`, `Email`, `UName`, `Password`) VALUES (" +
+        pool.escape(user.fname) + ", " + pool.escape(user.lname) + ", " + pool.escape(user.address) + ", " +
+        pool.escape(user.city) + ", " + pool.escape(user.state) + ", " + pool.escape(user.zip) + ", " +
+        pool.escape(user.email) + ", " + pool.escape(user.uname) + ", " + pool.escape(user.password) +
+        ")";
+
+    pool.query(sql_stmt, function(err, result) {
+        if (err || result.affectedRows != 1) {
+            return false;
+        }
+    });
+
+    return true;
+}
+
+app.get('/admin/load_users', function(req, res) {
+    var data_file = "./data/UserData5000.csv";
+    var users = [];
+    var line_count = 0;
+    var total_count = 0;
+    var error_count = 0;
+
+    lineReader.eachLine(data_file, function(line, last) {   // func_01
+        ++line_count;
+
+        if (line_count > 1) {
+            // Skip the first line because it is the title.
+            var parts = line.split("|");
+
+            var user = {
+                fname : parts[0], lname : parts[1],
+                address : parts[2], city : parts[3], state : parts[4],
+                zip : "", email : parts[5],
+                uname : parts[6], password : parts[7]
+            };
+
+            users.push([
+                user.fname, user.lname,
+                user.address, user.city, user.state, user.zip, user.email,
+                user.uname, user.password
+            ]);
+        }
+
+        if (last) {
+            var sql_stmt = "INSERT INTO `User` (`FName`, `LName`, `Addr`, `City`, `State`, `Zip`, `Email`, `UName`, `Password`) VALUES ?";
+            pool.query(sql_stmt, [users], function(err, result) {
+                total_count = result.affectedRows;
+                error_count = users.length - total_count;
+
+                console.log("==============================");
+                console.log("Data import completed:");
+                console.log("Total: " + total_count + " user(s)");
+                console.log("Error: " + error_count + " user(s)");
+                console.log("==============================");
+
+                return res.json("Data import completed.");
+            });
+        }
+    }); // func_01
+});
 
 function db_insert_record(record) {
     var categories = "";
@@ -1106,17 +1459,25 @@ function db_insert_record(record) {
         categories += record.categories[index];
     }
 
-    var sql_stmt = "INSERT INTO `Product` (`ID`, `ASIN`, `Description`, `Category`, `Title`, `Group`) VALUES (" +
+    // Insert product information.
+    var sql_stmt = "INSERT INTO `Product` (`ID`, `ASIN`, `Description`, `Categories`, `Title`, `Group`) VALUES (" +
         pool.escape(record.Id) + ", " + pool.escape(record.ASIN) + ", " +
         pool.escape(null) + ", " + pool.escape(categories) + ", " +
         pool.escape(record.title) + ", " + pool.escape(record.group) + ")";
 
     pool.query(sql_stmt, function(err, result) {
         if (err) {
-            // console.log("==============================");
-            // console.log("DB update error:");
-            // console.log(err);
-            // console.log(sql_stmt);
+            return false;
+        }
+    });
+
+    // Insert product inventory.
+    var default_quantity = "5";
+    sql_stmt = "INSERT INTO `Inventory` (`ProdID`, `Quantity`) VALUES (" +
+        pool.escape(record.Id) + ", " + default_quantity + ")";
+
+    pool.query(sql_stmt, function(err, result) {
+        if (err) {
             return false;
         }
     });
@@ -1124,7 +1485,7 @@ function db_insert_record(record) {
     return true;
 }
 
-app.get('/sandbox/load_data', function(req, res) {
+app.get('/admin/load_data', function(req, res) {
     var record = new Object();
     record.categories = [];
     var jsonRecord;
@@ -1134,9 +1495,9 @@ app.get('/sandbox/load_data', function(req, res) {
     var data_source = req.query.source;
     var data_file = null;
     if (data_source == "amazon-meta") {
-        data_file = "amazon-meta.txt";
+        data_file = "./data/amazon-meta.txt";
     } else {
-        data_file = "sample.txt";
+        data_file = "./data/sample.txt";
     }
 
     var total_count = 0;
@@ -1210,12 +1571,11 @@ app.get('/sandbox/load_data', function(req, res) {
 
             console.log("==============================");
             console.log("Data import completed:");
-            console.log("Total: " + total_count + " record(s)");
-            console.log("Error: " + error_count + " record(s)");
+            console.log("Total: " + total_count + " product(s)");
+            console.log("Error: " + error_count + " product(s)");
             console.log("==============================");
 
-            res.json();
-            return false; // stop reading
+            return res.json("Data import completed.");
         }
     });
 });
