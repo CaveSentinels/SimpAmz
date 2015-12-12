@@ -1409,7 +1409,7 @@ function db_insert_record(record) {
     }
 
     // Insert product information.
-    var sql_stmt = "INSERT INTO `Product` (`ID`, `ASIN`, `Description`, `Category`, `Title`, `Group`) VALUES (" +
+    var sql_stmt = "INSERT INTO `Product` (`ID`, `ASIN`, `Description`, `Categories`, `Title`, `Group`) VALUES (" +
         pool.escape(record.Id) + ", " + pool.escape(record.ASIN) + ", " +
         pool.escape(null) + ", " + pool.escape(categories) + ", " +
         pool.escape(record.title) + ", " + pool.escape(record.group) + ")";
