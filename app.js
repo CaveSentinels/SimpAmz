@@ -1294,6 +1294,45 @@ app.post('/alsoBought', function(req, res) {
 // ============================================================================
 // Get Recommendations
 
+var recommendation_cache = {};
+
+function get_recommendations(prod_id, rows) {
+    var related = {};
+    var item_id = null;
+    for (var i = 0; i < rows.length; ++i) {
+        if (rows[i].AlsoBought == prod_id) {
+            item_id = rows[i].Bought;
+        } else {
+            item_id = rows[i].AlsoBought;
+        }
+
+        if (related[item_id] != null) {
+            related[item_id] += 1;
+        } else {
+            related[item_id] = 1;
+        }
+    }
+
+    var sorted_items = Object.keys(related).map(function(key) {
+        return [key, related[key]];
+    });
+
+    sorted_items.sort(function(first, second) {
+        if (second[1] - first[1] == 0) {
+            return second[0] - first[0];
+        }
+
+        return second[1] - first[1];
+    });
+
+    var recommendations = [];
+    for (var i = 0; i < 5; ++i) {
+        recommendations.push(sorted_items[i][0]);
+    }
+
+    return recommendations;
+}
+
 app.post('/getRecommendations', function(req, res) {
     var success_msg_base = "01 the request was successful";
     var failure_msg_base = "02 there was a problem processing the request";
@@ -1301,6 +1340,14 @@ app.post('/getRecommendations', function(req, res) {
     // Get Recommendations does not require the user to log in.
 
     var prod_id = emptize(req.body.productId);
+
+    if (recommendation_cache[prod_id] != null) {
+        // If the recommendations can be found in the cache,
+        // then return them directly.
+        return res.json({
+            "relatedProducts:" : recommendation_cache[prod_id]
+        });
+    }
 
     // Get the product recommendations from the database.
     pool.getConnection(function(err, conn) {    // func_01
@@ -1312,9 +1359,8 @@ app.post('/getRecommendations', function(req, res) {
             ));    // Return
         }
 
-        // TODO: Implement me !
-
-        var sql_stmt = "";
+        var sql_stmt = "SELECT * FROM `AlsoBought` WHERE `Bought` = " +
+            prod_id + " OR `AlsoBought` = " + prod_id;
         conn.query(sql_stmt, function(err, rows) {    // func_02
             if (err) {
                 conn.release();
@@ -1326,10 +1372,15 @@ app.post('/getRecommendations', function(req, res) {
                 ));    // Return
             }
 
+            var recommendations = get_recommendations(prod_id, rows);
+
+            // Add to cache.
+            recommendation_cache[prod_id] = recommendations;
+
             conn.release();
             // Product recommendations have been selected.
             return res.json({
-                product_list : rows
+                "relatedProducts:" : recommendations
             });
         }); // func_02
     }); // func_01
