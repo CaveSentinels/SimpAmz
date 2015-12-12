@@ -89,6 +89,10 @@ function _Q(str) {
     return "\"" + emptize(str) + "\"";
 }
 
+function dbg_log(obj) {
+    console.log(obj);
+}
+
 // ============================================================================
 // Session management
 
@@ -356,6 +360,7 @@ app.post('/login', function(req, res) {
             ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
             res.cookie("sessionID", "");
+            dbg_log(ret);
             return res.status(500).json(ret);
         }
 
@@ -375,6 +380,7 @@ app.post('/login', function(req, res) {
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 res.cookie("sessionID", "");
+                dbg_log(ret);
                 return res.status(500).json(ret);
             }
 
@@ -389,6 +395,7 @@ app.post('/login', function(req, res) {
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 res.cookie("sessionID", "");
+                dbg_log(ret);
                 return res.status(500).json(ret);
             }
 
@@ -397,11 +404,13 @@ app.post('/login', function(req, res) {
                 var ret = ret_value(
                     failure_msg_base,
                     "Incorrect user name or password.",
-                    "E_POST_LOGIN_04", null
+                    "E_POST_LOGIN_04",
+                    { "uname": username, "pwd": password }
                 );
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 res.cookie("sessionID", "");
+                dbg_log(ret);
                 return res.status(401).json(ret);
             }
 
@@ -416,12 +425,14 @@ app.post('/login', function(req, res) {
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
                         conn.release();
-                        return res.status(500).json(ret_value(
+                        var ret = ret_value(
                             failure_msg_base,
                             "Database INSERT INTO error: " + err,
                             "E_POST_LOGIN_05",
                             sql_stmt
-                        ));    // Return
+                        );
+                        dbg_log(ret);
+                        return res.status(500).json(ret);    // Return
                     } else {
                         conn.release();
                         // OK. Finally we've done everything.
@@ -453,6 +464,7 @@ app.post('/login', function(req, res) {
                 ret["err_message"] = failure_msg_base;
                 ret["menu"] = [];
                 res.cookie("sessionID", "");
+                dbg_log(ret);
                 return res.status(500).json(ret);
             }
         }); // Func_02
@@ -467,6 +479,7 @@ app.post('/login', function(req, res) {
             ret["err_message"] = failure_msg_base;
             ret["menu"] = [];
             res.cookie("sessionID", "");
+            dbg_log(ret);
             return res.status(500).json(ret);
         }); // Func_03
     }); // Func_01
@@ -484,43 +497,51 @@ app.post('/logout', function(req, res) {
     // Try to delete the session directly.
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.status(500).json(ret_value(
+            var ret = ret_value(
                 "Database connection error: ",
                 err, "E_POST_LOGOUT_01", null
-            ));    // Return
+            );
+            dbg_log(ret);
+            return res.status(500).json(ret);    // Return
         }
 
         var sql_stmt = "DELETE FROM `Session` WHERE `SessionID`=" + _Q(sessionID);
         conn.query(sql_stmt, function(err, result) {    // func_02
             if (err) {
                 conn.release();
-                return res.status(500).json(ret_value(
+                var ret = ret_value(
                     "Database DELETE error: ",
                     err, "E_POST_LOGOUT_02",
                     sql_stmt
-                ));    // Return
+                );
+                dbg_log(ret);
+                return res.status(500).json(ret);    // Return
             } else {
                 if (result.affectedRows == 0) {
                     conn.release();
-                    // If the number of affected rows is 0, that means this
-                    // session didn't exist before.
-                    return res.status(500).json(ret_value(
+                    var ret = ret_value(
                         failure_msg_base,
                         null, "E_POST_LOGOUT_03",
                         sql_stmt
-                    ));    // Return
+                    );
+                    dbg_log(ret);
+                    // If the number of affected rows is 0, that means this
+                    // session didn't exist before.
+                    return res.status(500).json(ret);    // Return
                 } else if (result.affectedRows > 1) {
                     conn.release();
+                    var ret = ret_value(
+                        success_msg_base,
+                        null, "E_POST_LOGOUT_04", null
+                    );
+                    dbg_log(ret);
                     // This should never happen because the session ID
                     // is guaranteed to be unique in the database.
                     // However, in case this really happens, let's just assume
                     // the user logs out successfully.
                     // But because this is an abnormal case, we still give the
                     // error point value.
-                    return res.json(ret_value(
-                        success_msg_base,
-                        null, "E_POST_LOGOUT_04", null
-                    ));
+                    return res.json(ret);
                 } else {
                     conn.release();
                     // Successful logout.
@@ -546,11 +567,13 @@ app.post('/updateInfo', function(req, res) {
 
     pool.getConnection(function(err, conn) {    // func_01
         if (err) {
-            return res.status(500).json(ret_value(
+            var ret = ret_value(
                 failure_msg_base,
                 "Database connection error: " + err,
                 "E_POST_UPDATE_INFO_01", null
-            ));    // Return
+            );
+            dbg_log(ret);
+            return res.status(500).json(ret);    // Return
         }
 
         var sql_stmt = "SELECT User.ID, User.Role, Session.LastLogin FROM User " +
@@ -561,22 +584,26 @@ app.post('/updateInfo', function(req, res) {
         conn.query(sql_stmt, function(err, rows) {  // func_02
             if (err) {
                 conn.release();
-                return res.status(500).json(ret_value(
+                var ret = ret_value(
                     failure_msg_base,
                     "Database SELECT error: " + err,
                     "E_POST_UPDATE_INFO_02",
                     sql_stmt
-                ));    // Return
+                );
+                dbg_log(ret);
+                return res.status(500).json(ret);    // Return
             } else {
                 if (rows.length < 1) {
                     conn.release();
-                    // Not authenticated
-                    return res.status(401).json(ret_value(
+                    var ret = ret_value(
                         failure_msg_base,
                         "Not authenticated.",
                         "E_POST_UPDATE_INFO_03",
                         null
-                    ));
+                    );
+                    dbg_log(ret);
+                    // Not authenticated
+                    return res.status(401).json(ret);
                 } else {
                     // The case that rows.length > 1 should never happen
                     // because the session ID is unique in the database.
@@ -615,12 +642,14 @@ app.post('/updateInfo', function(req, res) {
             if (user_info.zip) {
                 if (!zip_code_pattern.test(user_info.zip)) {
                     conn.release();
-                    // Meaning that zip's value is not a 5-digit zip code.
-                    return res.status(400).json(ret_value(
+                    var ret = ret_value(
                         failure_msg_base,
                         "Invalid zip code: " + user_info.zip,
                         "E_POST_UPDATE_INFO_04", null
-                    ));    // Return
+                    );
+                    dbg_log(ret);
+                    // Meaning that zip's value is not a 5-digit zip code.
+                    return res.status(400).json(ret);    // Return
                 }
             }
 
@@ -629,12 +658,14 @@ app.post('/updateInfo', function(req, res) {
             if (user_info.email) {
                 if (!email_pattern.test(user_info.email)) {
                     conn.release();
-                    // Meaning that email's value is not a valid email address.
-                    return res.status(400).json(ret_value(
+                    var ret = ret_value(
                         failure_msg_base,
                         "Invalid email format: " + user_info.email,
                         "E_POST_UPDATE_INFO_05", null
-                    ));    // Return
+                    );
+                    dbg_log(ret);
+                    // Meaning that email's value is not a valid email address.
+                    return res.status(400).json(ret);    // Return
                 }
             }
 
@@ -658,12 +689,14 @@ app.post('/updateInfo', function(req, res) {
                 conn.query(sql_stmt, function(err, result) {    // func_03
                     if (err) {
                         conn.release();
-                        return res.status(400).json(ret_value(
+                        var ret = ret_value(
                             failure_msg_base,
                             "Database UPDATE error: " + err,
                             "E_POST_UPDATE_INFO_06",
                             sql_stmt
-                        ));    // Return
+                        );
+                        dbg_log(ret);
+                        return res.status(400).json(ret);    // Return
                     } else {
                         conn.release();
                         return res.json(ret_value(success_msg_base, null, null, null));
