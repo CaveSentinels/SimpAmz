@@ -10,7 +10,7 @@ var lineReader = require('line-reader');
 var mysql = require('mysql');
 var pool = mysql.createPool({
     connectionLimit : 100,
-    host : 'localhost',
+    host : 'ec2-52-23-254-117.compute-1.amazonaws.com',
     user : 'root',
     password : 'password',
     port : 3306,
