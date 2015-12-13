@@ -418,6 +418,10 @@ app.post('/login', function(req, res) {
                 // User authentication succeeded. Create a session for him/her.
                 var session_info = session_create(rows[0].ID, rows[0].Role);
 
+                // Delete the previous session if needed.
+                sql_stmt = "DELETE FROM `Session` WHERE `UserID` = " + _Q(session_info.uid);
+                conn.query(sql_stmt, function(err, result) {});
+
                 // Now save the session info into database.
                 sql_stmt = "INSERT INTO Session (SessionID, UserID, LastLogin) VALUES (" +
                     _Q(session_info.sid) + ", " + _Q(session_info.uid) + ", " + _Q(session_info.last_login) + ")";
